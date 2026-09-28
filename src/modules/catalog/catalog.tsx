@@ -4,17 +4,20 @@ import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { EmptyState } from "@/components/empty-state";
-import { categories, demoProducts } from "./demo-products";
+import type { DemoProduct } from "./demo-products";
 
-export function Catalog() {
+export function Catalog({ products }: { products: DemoProduct[] }) {
   const [query, setQuery] = useState("");
-  const [category, setCategory] =
-    useState<(typeof categories)[number]>("Todos");
+  const [category, setCategory] = useState("Todos");
+  const categories = useMemo(
+    () => ["Todos", ...Array.from(new Set(products.map((item) => item.category)))],
+    [products],
+  );
 
-  const products = useMemo(() => {
+  const visibleProducts = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase("pt-BR");
 
-    return demoProducts.filter((product) => {
+    return products.filter((product) => {
       const matchesCategory =
         category === "Todos" || product.category === category;
       const searchable =
@@ -26,7 +29,7 @@ export function Catalog() {
         (!normalizedQuery || searchable.includes(normalizedQuery))
       );
     });
-  }, [category, query]);
+  }, [category, products, query]);
 
   const clearFilters = () => {
     setQuery("");
@@ -72,13 +75,14 @@ export function Catalog() {
       <div className="catalog-toolbar">
         <span>Seleção para apresentação</span>
         <span>
-          {products.length} {products.length === 1 ? "produto" : "produtos"}
+          {visibleProducts.length}{" "}
+          {visibleProducts.length === 1 ? "produto" : "produtos"}
         </span>
       </div>
 
-      {products.length > 0 ? (
+      {visibleProducts.length > 0 ? (
         <div className="product-grid">
-          {products.map((product) => (
+          {visibleProducts.map((product) => (
             <article className="product-card" key={product.code}>
               <Link
                 href={`/catalogo/${product.code}`}
@@ -101,7 +105,14 @@ export function Catalog() {
                 <div className="product-price">
                   <div>
                     <span>Preço</span>
-                    <strong>Sob consulta</strong>
+                    <strong>
+                      {product.price === null
+                        ? "Sob consulta"
+                        : new Intl.NumberFormat("pt-BR", {
+                            style: "currency",
+                            currency: product.currency,
+                          }).format(product.price)}
+                    </strong>
                   </div>
                   <Link href={`/catalogo/${product.code}`}>Ver opções →</Link>
                 </div>

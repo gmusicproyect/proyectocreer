@@ -32,14 +32,16 @@ npm start
 - Next.js App Router, TypeScript estricto, Tailwind CSS 4 y tokens visuales compartidos.
 - Inicio, catálogo vacío con búsqueda, selección vacía de cotización, acceso y 404.
 - Panel local navegable: resumen, productos, categorías, clientes, cotizaciones, equipo/permisos y suscripción.
-- Colección piloto de 20 productos con ficha, galería, colores, cantidad y personalización.
+- Colección de presentación conectada a Google Sheets con 20 productos reales,
+  imágenes de Drive, filtros, ficha, cantidad y personalización.
 - Flujo local de solicitud de cotización y recepción simulada en el panel.
 - Contratos de entidades y política de permisos por empresa; proyección pública que excluye costos.
 - Integración Supabase preparada: sesión segura, login/logout, confirmación de correo y acceso administrativo por membresía.
 - Migración con empresas, perfiles, roles, categorías, productos, costos privados, clientes, cotizaciones, suscripción y auditoría.
 - Row Level Security, permisos SQL, almacenamiento de imágenes y prueba base de aislamiento.
 - Carga inicial de los 20 productos y registro persistente de solicitudes cuando Supabase está conectado.
-- Módulo instalable de Google Sheets + Apps Script para que Lucas importe imágenes desde Drive, complete productos y publique el catálogo sin duplicados.
+- Módulo instalado de Google Sheets + Apps Script para que Lucas importe imágenes
+  desde Drive, complete productos y publique el catálogo sin duplicados.
 - Acceso administrativo cerrado por defecto; el modo local queda deshabilitado en producción.
 
 ## Siguiente alcance

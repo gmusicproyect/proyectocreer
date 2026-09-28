@@ -1,10 +1,13 @@
 import { PublicShell } from "@/components/public-shell";
 import { Catalog } from "@/modules/catalog/catalog";
-export default function Page() {
+import { getCatalogProducts } from "@/modules/catalog/catalog-source";
+
+export default async function Page() {
+  const products = await getCatalogProducts();
   return (
     <PublicShell>
       <main id="conteudo">
-        <Catalog />
+        <Catalog products={products} />
       </main>
     </PublicShell>
   );

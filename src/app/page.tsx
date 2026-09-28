@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { PublicShell } from "@/components/public-shell";
 import { Catalog } from "@/modules/catalog/catalog";
-export default function Home() {
+import { getCatalogProducts } from "@/modules/catalog/catalog-source";
+
+export default async function Home() {
+  const products = await getCatalogProducts();
   return (
     <PublicShell>
       <main id="conteudo">
@@ -36,7 +39,7 @@ export default function Home() {
             </span>
           </div>
         </section>
-        <Catalog />
+        <Catalog products={products} />
         <section className="values" id="sobre">
           <div>
             <span>01</span>

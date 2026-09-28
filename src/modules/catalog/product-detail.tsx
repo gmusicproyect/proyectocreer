@@ -15,6 +15,13 @@ export function ProductDetail({ product }: { product: DemoProduct }) {
   const [quantity, setQuantity] = useState(50);
   const [personalization, setPersonalization] = useState("");
   const [added, setAdded] = useState(false);
+  const priceLabel =
+    product.price === null
+      ? "Sob consulta"
+      : new Intl.NumberFormat("pt-BR", {
+          style: "currency",
+          currency: product.currency,
+        }).format(product.price);
 
   const addToQuote = () => {
     addDemoCartItem({
@@ -67,9 +74,11 @@ export function ProductDetail({ product }: { product: DemoProduct }) {
           <p className="product-lead">{product.description}</p>
           <div className="price-callout">
             <span>Preço para esta apresentação</span>
-            <strong>Sob consulta</strong>
+            <strong>{priceLabel}</strong>
             <small>
-              Lucas poderá definir custo e preço de venda no painel.
+              {product.price === null
+                ? "O valor será confirmado pela equipe comercial."
+                : "Preço de referência; quantidade e personalização serão confirmadas no orçamento."}
             </small>
           </div>
 
@@ -115,7 +124,8 @@ export function ProductDetail({ product }: { product: DemoProduct }) {
             </div>
           )}
           <p className="demo-caption">
-            Demonstração local: nenhuma solicitação foi enviada.
+            Quantidade, acabamento e personalização serão confirmados pela
+            equipe comercial.
           </p>
         </section>
       </div>
