@@ -356,6 +356,11 @@ function guardarCambiosImportacion_(ctx) {
   if (nuevas.length) {
     const inicio = Math.max(sh.getLastRow(), t.nOriginal + 1) + 1;
     asegurarFilas_(sh, inicio + nuevas.length - 1);
+    // Google Sheets interpreta códigos numéricos como números si una copia de
+    // la planilla perdió el formato de la columna. Aplicarlo justo antes de
+    // escribir evita que valores como "06100" pierdan el cero inicial y luego
+    // se detecten erróneamente como productos nuevos.
+    sh.getRange(inicio, map.CODIGO + 1, nuevas.length, 1).setNumberFormat('@');
     sh.getRange(inicio, 1, nuevas.length, t.ancho).setValues(nuevas);
     sh.getRange(inicio, map.DESTACADO + 1, nuevas.length, 1)
       .setDataValidation(SpreadsheetApp.newDataValidation().requireCheckbox().build());
