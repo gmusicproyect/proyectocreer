@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <?!= include('Styles'); ?>
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <span class="logo">◆</span>
+      <div>
+        <div class="brand-name" id="negocio">Catálogo</div>
+        <div class="brand-sub">Panel administrador · <span id="version"></span></div>
+      </div>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button class="tab activo" data-vista="dashboard">Dashboard</button>
+      <button class="tab" data-vista="productos">Productos</button>
+      <button class="tab" data-vista="formulario" id="tab-formulario">Nuevo producto</button>
+      <button class="tab" data-vista="importar">Importar Drive</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- ============ DASHBOARD ============ -->
+    <section class="vista activa" id="vista-dashboard">
+      <div class="fila-titulo">
+        <h2>Resumen</h2>
+        <div class="acciones">
+          <button class="btn" id="btn-validar">Validar base</button>
+          <button class="btn primario" id="btn-refrescar">Actualizar</button>
+        </div>
+      </div>
+      <div class="kpis" id="kpis"></div>
+      <div class="panel-info oculto" id="resultado-validacion"></div>
+    </section>
+
+    <!-- ============ PRODUCTOS ============ -->
+    <section class="vista" id="vista-productos">
+      <div class="filtros">
+        <input type="search" id="f-texto" placeholder="Buscar por código o nombre…" autocomplete="off">
+        <select id="f-categoria"><option value="">Todas las categorías</option></select>
+        <select id="f-estado"><option value="">Todos los estados</option></select>
+        <label class="check"><input type="checkbox" id="f-incompletos"> Solo incompletos</label>
+        <span class="contador" id="contador"></span>
+      </div>
+      <div class="tabla-wrap">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Código</th><th>Imagen</th><th>Nombre</th><th>Categoría</th>
+              <th class="num">Precio</th><th>Estado</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <div class="paginacion" id="paginacion"></div>
+    </section>
+
+    <!-- ============ FORMULARIO ============ -->
+    <section class="vista" id="vista-formulario">
+      <div class="fila-titulo">
+        <h2 id="form-titulo">Nuevo producto</h2>
+        <div class="meta" id="form-meta"></div>
+      </div>
+      <form id="form" novalidate autocomplete="off">
+        <div class="grid">
+          <label>Código *
+            <input name="codigo" id="i-codigo" maxlength="40" placeholder="XBZ-1024" required>
+            <small>Letras, números, @, guion o punto. Sin espacios ni "_".</small>
+          </label>
+          <label>Nombre *
+            <input name="nombre" id="i-nombre" maxlength="150" required>
+          </label>
+          <label>Categoría
+            <div class="con-boton">
+              <select name="categoria" id="i-categoria"><option value="">— Sin categoría —</option></select>
+              <button type="button" class="btn chico" id="btn-nueva-cat" title="Crear categoría">+</button>
+            </div>
+            <div class="nueva-cat oculto" id="caja-nueva-cat">
+              <input id="i-nueva-cat" maxlength="80" placeholder="Nombre de la nueva categoría">
+              <button type="button" class="btn chico primario" id="btn-crear-cat">Crear</button>
+            </div>
+          </label>
+          <label>Subcategoría
+            <input name="subcategoria" id="i-subcategoria" maxlength="80">
+          </label>
+          <label>Precio
+            <input name="precio" id="i-precio" inputmode="decimal" placeholder="0,00">
+          </label>
+          <label>Estado
+            <select name="estado" id="i-estado"></select>
+          </label>
+          <label class="span2">Descripción
+            <textarea name="descripcion" id="i-descripcion" rows="4" maxlength="5000"></textarea>
+          </label>
+          <label class="span2">Observaciones internas
+            <textarea name="observaciones" id="i-observaciones" rows="2" maxlength="1000"></textarea>
+          </label>
+          <label class="check span2"><input type="checkbox" name="destacado" id="i-destacado"> Producto destacado</label>
+        </div>
+
+        <h3>Imágenes</h3>
+        <p class="ayuda">Pega el link o ID del archivo en Drive. La importación desde Drive las completa sola si el archivo se llama como el código.</p>
+        <div class="imagenes" id="imagenes"></div>
+
+        <div class="barra-acciones">
+          <button type="button" class="btn peligro oculto" id="btn-eliminar">Eliminar…</button>
+          <span class="espacio"></span>
+          <button type="button" class="btn" id="btn-cancelar">Cancelar</button>
+          <button type="submit" class="btn primario" id="btn-guardar">Guardar</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- ============ IMPORTADOR ============ -->
+    <section class="vista" id="vista-importar">
+      <div class="fila-titulo"><h2>Importar desde Google Drive</h2></div>
+      <div class="importador">
+        <label>URL o ID de carpeta
+          <input id="i-carpeta" placeholder="https://drive.google.com/drive/folders/…" autocomplete="off">
+        </label>
+        <div class="acciones">
+          <button class="btn primario grande" id="btn-importar">IMPORTAR PRODUCTOS</button>
+          <button class="btn oculto" id="btn-cancelar-import">Cancelar</button>
+        </div>
+      </div>
+      <div class="progreso oculto" id="progreso">
+        <div class="barra"><div class="relleno" id="relleno"></div></div>
+        <div class="progreso-texto" id="progreso-texto"></div>
+      </div>
+      <div class="kpis chicos" id="import-stats"></div>
+      <div class="panel-info oculto" id="import-muestra"></div>
+      <div class="notas">
+        <b>Reglas de nombres:</b> <code>XBZ-1024.jpg</code> = principal · <code>XBZ-1024_1.jpg</code> = secundaria 1 ·
+        <code>XBZ-1024_2.jpg</code> = secundaria 2. Formatos: jpg, jpeg, png, webp. Incluye subcarpetas.
+        Si cierras esta ventana, la importación queda en pausa y continúa al volver a pulsar el botón con la misma carpeta.
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal de confirmación de borrado -->
+  <div class="modal oculto" id="modal-eliminar" role="dialog" aria-modal="true">
+    <div class="modal-caja">
+      <h3>Eliminar producto</h3>
+      <p>Esta acción borra la fila de la hoja (queda una copia en LOGS). Si solo quieres sacarlo del catálogo, cambia su estado a <b>OCULTO</b>.</p>
+      <p>Escribe <b id="modal-codigo"></b> para confirmar:</p>
+      <input id="i-confirmar" autocomplete="off">
+      <div class="barra-acciones">
+        <span class="espacio"></span>
+        <button class="btn" id="btn-modal-cancelar">Cancelar</button>
+        <button class="btn peligro" id="btn-modal-eliminar" disabled>Eliminar definitivamente</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="cargando oculto" id="cargando"><div class="spinner"></div><span id="cargando-texto">Cargando…</span></div>
+  <div class="toasts" id="toasts"></div>
+
+  <script>window.APP_BOOT = <?!= boot ?>;</script>
+  <?!= include('Scripts'); ?>
+</body>
+</html>

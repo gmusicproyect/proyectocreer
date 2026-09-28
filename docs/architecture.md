@@ -8,6 +8,8 @@ Monolito modular Next.js App Router + TypeScript + Tailwind CSS. Componentes de 
 
 Supabase PostgreSQL, Auth y Storage forman la capa de persistencia/autenticación. La migración vive en `supabase/migrations`; la carga piloto está en `supabase/seed.sql`. Vercel es el destino previsto, no provisionado. No usar Apps Script como frontend: las rutas públicas y la separación de autorización requieren una base web extensible. No introducir microservicios en esta etapa.
 
+Google Sheets y Drive pueden funcionar como área de carga del catálogo para Lucas. El módulo Apps Script importa imágenes, permite completar productos y expone únicamente la proyección pública. Esa hoja no almacena costos, clientes, cotizaciones, permisos ni suscripciones. En producción, el catálogo publicado se sincroniza hacia Supabase para conservar una sola base operativa y evitar que la disponibilidad de la web dependa de Apps Script.
+
 ## Estructura
 
 - `src/app`: rutas y composición de páginas.
@@ -17,6 +19,7 @@ Supabase PostgreSQL, Auth y Storage forman la capa de persistencia/autenticació
 - `src/modules/auth`: acceso cerrado y política de permisos.
 - `src/modules/{products,categories,customers,quotations,subscriptions}`: contratos de dominio.
 - `supabase`: migraciones, datos piloto y pruebas de políticas.
+- `integrations/google-apps-script/catalogo-lucas`: panel e importador de Drive para la gestión del catálogo en Sheets.
 - `docs`: decisiones, modelo y evolución.
 - `tests`: límites de autorización y proyección pública.
 

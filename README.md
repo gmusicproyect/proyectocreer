@@ -39,10 +39,11 @@ npm start
 - Migración con empresas, perfiles, roles, categorías, productos, costos privados, clientes, cotizaciones, suscripción y auditoría.
 - Row Level Security, permisos SQL, almacenamiento de imágenes y prueba base de aislamiento.
 - Carga inicial de los 20 productos y registro persistente de solicitudes cuando Supabase está conectado.
+- Módulo instalable de Google Sheets + Apps Script para que Lucas importe imágenes desde Drive, complete productos y publique el catálogo sin duplicados.
 - Acceso administrativo cerrado por defecto; el modo local queda deshabilitado en producción.
 
 ## Siguiente alcance
 
 Crear o enlazar el proyecto Supabase, aplicar la migración y registrar los primeros usuarios. Después corresponde implementar el CRUD visual de productos, categorías, costos y clientes; carga de imágenes desde el panel; edición del estado y precio de cotizaciones; facturación y publicación. Sin credenciales de Supabase, el laboratorio conserva carrito y solicitudes en `localStorage`.
 
-Consultar [activación de Supabase](docs/supabase-setup.md), [arquitectura](docs/architecture.md), [modelo comercial](docs/service-model.md) y [siguientes capas](docs/roadmap.md).
+Consultar [instalación del Catálogo Lucas](integrations/google-apps-script/catalogo-lucas/INSTALACION.md), [activación de Supabase](docs/supabase-setup.md), [arquitectura](docs/architecture.md), [modelo comercial](docs/service-model.md) y [siguientes capas](docs/roadmap.md).

@@ -1,0 +1,567 @@
+<script>
+/* ============================================================================
+ * Scripts.html — Lógica del panel (navegador)
+ * Se comunica con el servidor solo mediante google.script.run.
+ * Toda validación real ocurre en el servidor; aquí solo se ayuda al usuario.
+ * ========================================================================== */
+(function () {
+  'use strict';
+
+  const BOOT = window.APP_BOOT || { vista: 'dashboard' };
+  const S = {
+    negocio: '', moneda: 'BRL', estados: [], categorias: [],
+    productos: [], stats: null,
+    pagina: 1, porPagina: 40,
+    modo: 'crear', editando: null,
+    importando: false, cancelar: false
+  };
+
+  // ---------------------------------------------------------------- utilidades
+  const $ = (s, r) => (r || document).querySelector(s);
+  const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+
+  function esc(v) {
+    return String(v === null || v === undefined ? '' : v).replace(/[&<>"']/g, c =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function sinAcentos(s) {
+    return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  }
+
+  /** Llama a una función del servidor y devuelve una promesa. */
+  function llamar(fn, ...args) {
+    return new Promise((resolve, reject) => {
+      const r = google.script.run
+        .withSuccessHandler(resolve)
+        .withFailureHandler(err => reject(err instanceof Error ? err : new Error(String(err && err.message || err))));
+      r[fn].apply(r, args);
+    });
+  }
+
+  function toast(msg, tipo) {
+    const d = document.createElement('div');
+    d.className = 'toast ' + (tipo || '');
+    d.textContent = msg;
+    $('#toasts').appendChild(d);
+    setTimeout(() => d.remove(), tipo === 'error' ? 9000 : 3500);
+  }
+
+  function cargando(on, texto) {
+    $('#cargando-texto').textContent = texto || 'Cargando…';
+    $('#cargando').classList.toggle('oculto', !on);
+  }
+
+  function precio(v) {
+    if (v === null || v === undefined || v === '') return '—';
+    try {
+      return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: S.moneda }).format(v);
+    } catch (e) {
+      return S.moneda + ' ' + Number(v).toFixed(2);
+    }
+  }
+
+  function thumb(id, tam) {
+    if (!id) return '<div class="thumb ph">sin imagen</div>';
+    return '<img class="thumb" loading="lazy" alt="" src="https://drive.google.com/thumbnail?sz=w' + (tam || 120) +
+      '&id=' + encodeURIComponent(id) + '">';
+  }
+
+  function badge(estado) {
+    return estado ? '<span class="badge ' + esc(estado) + '">' + esc(estado) + '</span>' : '<span class="badge SIN">SIN ESTADO</span>';
+  }
+
+  function opciones(select, valores, textoVacio) {
+    select.innerHTML = (textoVacio !== undefined ? '<option value="">' + esc(textoVacio) + '</option>' : '') +
+      valores.map(v => '<option value="' + esc(v) + '">' + esc(v) + '</option>').join('');
+  }
+
+  // Si una miniatura no carga (sin acceso o sin cookies), mostrar un marcador.
+  document.addEventListener('error', e => {
+    const img = e.target;
+    if (img && img.tagName === 'IMG' && img.classList.contains('thumb')) {
+      const d = document.createElement('div');
+      d.className = 'thumb ph';
+      d.textContent = 'sin vista';
+      img.replaceWith(d);
+    }
+  }, true);
+
+  // --------------------------------------------------------------- navegación
+  function mostrarVista(nombre) {
+    $$('.vista').forEach(v => v.classList.toggle('activa', v.id === 'vista-' + nombre));
+    $$('.tab').forEach(t => t.classList.toggle('activo', t.dataset.vista === nombre));
+  }
+
+  $$('.tab').forEach(t => t.addEventListener('click', () => {
+    if (t.dataset.vista === 'formulario') abrirFormulario(null);
+    else mostrarVista(t.dataset.vista);
+  }));
+
+  // ------------------------------------------------------------------ inicio
+  async function iniciar() {
+    cargando(true, 'Cargando catálogo…');
+    try {
+      const ini = await llamar('panelInit');
+      S.negocio = ini.negocio; S.moneda = ini.moneda || 'BRL'; S.estados = ini.estados;
+      S.categorias = ini.categorias;
+      $('#negocio').textContent = ini.negocio;
+      $('#version').textContent = 'v' + ini.version;
+      $('#i-carpeta').value = ini.carpetaPrincipal || '';
+      opciones($('#f-estado'), S.estados, 'Todos los estados');
+      opciones($('#i-estado'), S.estados);
+      refrescarCategorias();
+      await cargarProductos();
+      if (ini.importacionEnCurso) {
+        pintarImportacion(ini.importacionEnCurso);
+        $('#btn-importar').textContent = 'REANUDAR IMPORTACIÓN';
+        toast('Hay una importación en pausa: ' + ini.importacionEnCurso.carpeta, 'aviso');
+      }
+      if (BOOT.vista === 'nuevo') abrirFormulario(null);
+    } catch (e) {
+      toast(e.message, 'error');
+    } finally {
+      cargando(false);
+    }
+  }
+
+  async function cargarProductos() {
+    const r = await llamar('panelListarProductos');
+    S.productos = r.productos;
+    S.stats = r.stats;
+    pintarDashboard();
+    pintarTabla();
+  }
+
+  function refrescarCategorias() {
+    const nombres = S.categorias.map(c => c.nombre);
+    const fc = $('#f-categoria').value, ic = $('#i-categoria').value;
+    opciones($('#f-categoria'), nombres, 'Todas las categorías');
+    opciones($('#i-categoria'), nombres, '— Sin categoría —');
+    $('#f-categoria').value = fc;
+    $('#i-categoria').value = ic;
+  }
+
+  // --------------------------------------------------------------- dashboard
+  function pintarDashboard() {
+    const s = S.stats;
+    if (!s) return;
+    const items = [
+      ['Total productos', s.total, '', ''],
+      ['Publicados', s.publicados, '', 'PUBLICADO'],
+      ['Pendientes', s.pendientes, s.pendientes ? 'alerta' : '', 'PENDIENTE'],
+      ['Ocultos', s.ocultos, '', 'OCULTO'],
+      ['Borradores', s.borradores, '', 'BORRADOR'],
+      ['Categorías', s.categorias, '', ''],
+      ['Sin imagen', s.sinImagen, s.sinImagen ? 'alerta' : '', ''],
+      ['Incompletos', s.incompletos, s.incompletos ? 'alerta' : '', 'INCOMPLETOS']
+    ];
+    $('#kpis').innerHTML = items.map(i =>
+      '<div class="kpi ' + i[2] + (i[3] ? ' clic' : '') + '" data-filtro="' + i[3] + '"><div class="v">' + esc(i[1]) +
+      '</div><div class="l">' + esc(i[0]) + '</div></div>').join('');
+  }
+
+  $('#kpis').addEventListener('click', e => {
+    const k = e.target.closest('.kpi.clic');
+    if (!k) return;
+    const f = k.dataset.filtro;
+    $('#f-texto').value = '';
+    $('#f-categoria').value = '';
+    $('#f-incompletos').checked = f === 'INCOMPLETOS';
+    $('#f-estado').value = f === 'INCOMPLETOS' ? '' : f;
+    S.pagina = 1;
+    pintarTabla();
+    mostrarVista('productos');
+  });
+
+  $('#btn-refrescar').addEventListener('click', async () => {
+    cargando(true);
+    try { await cargarProductos(); toast('Datos actualizados'); }
+    catch (e) { toast(e.message, 'error'); }
+    finally { cargando(false); }
+  });
+
+  $('#btn-validar').addEventListener('click', async () => {
+    cargando(true, 'Validando base (puede tardar hasta 1 minuto)…');
+    try {
+      const r = await llamar('panelValidarBase');
+      const tipos = Object.keys(r.porTipo).map(k => '<li><b>' + esc(k) + '</b>: ' + esc(r.porTipo[k]) + '</li>').join('');
+      const caja = $('#resultado-validacion');
+      caja.innerHTML = '<b>Validación:</b> ' + esc(r.productosRevisados) + ' productos · ' +
+        '<span style="color:var(--err)">' + esc(r.errores) + ' errores</span> · ' +
+        '<span style="color:var(--warn)">' + esc(r.advertencias) + ' advertencias</span>' +
+        (tipos ? '<ul>' + tipos + '</ul>' : '') + '<div class="meta">Detalle completo en la hoja VALIDACION.</div>';
+      caja.classList.remove('oculto');
+    } catch (e) {
+      toast(e.message, 'error');
+    } finally {
+      cargando(false);
+    }
+  });
+
+  // --------------------------------------------------------------- productos
+  function filtrados() {
+    const q = sinAcentos($('#f-texto').value.trim());
+    const cat = $('#f-categoria').value, est = $('#f-estado').value, inc = $('#f-incompletos').checked;
+    return S.productos.filter(p =>
+      (!q || sinAcentos(p.codigo).includes(q) || sinAcentos(p.nombre).includes(q)) &&
+      (!cat || p.categoria === cat) &&
+      (!est || p.estado === est) &&
+      (!inc || p.incompleto));
+  }
+
+  function pintarTabla() {
+    const lista = filtrados();
+    const paginas = Math.max(1, Math.ceil(lista.length / S.porPagina));
+    S.pagina = Math.min(S.pagina, paginas);
+    const vista = lista.slice((S.pagina - 1) * S.porPagina, S.pagina * S.porPagina);
+    $('#contador').textContent = lista.length + ' de ' + S.productos.length + ' productos';
+
+    $('#tbody').innerHTML = vista.length ? vista.map(p =>
+      '<tr>' +
+        '<td class="cod">' + esc(p.codigo) + (p.destacado ? ' <span class="estrella" title="Destacado">★</span>' : '') + '</td>' +
+        '<td>' + thumb(p.imagen, 100) + '</td>' +
+        '<td>' + (p.nombre ? esc(p.nombre) : '<i class="meta">sin nombre</i>') + (p.incompleto ? '<span class="tag-inc">incompleto</span>' : '') + '</td>' +
+        '<td>' + esc(p.categoria || '—') + '</td>' +
+        '<td class="num">' + esc(precio(p.precio)) + '</td>' +
+        '<td>' + badge(p.estado) + '</td>' +
+        '<td class="acc">' +
+          (p.estado === 'PUBLICADO'
+            ? '<button class="link" data-accion="ocultar" data-codigo="' + esc(p.codigo) + '">Ocultar</button>'
+            : '<button class="link" data-accion="publicar" data-codigo="' + esc(p.codigo) + '">Publicar</button>') +
+          '<button class="btn chico" data-accion="editar" data-codigo="' + esc(p.codigo) + '">Editar</button>' +
+        '</td>' +
+      '</tr>').join('')
+      : '<tr><td colspan="7" class="vacio">No hay productos con estos filtros.</td></tr>';
+
+    $('#paginacion').innerHTML = paginas > 1
+      ? '<button class="btn chico" data-pag="' + (S.pagina - 1) + '"' + (S.pagina === 1 ? ' disabled' : '') + '>‹</button>' +
+        '<span>Página ' + S.pagina + ' de ' + paginas + '</span>' +
+        '<button class="btn chico" data-pag="' + (S.pagina + 1) + '"' + (S.pagina === paginas ? ' disabled' : '') + '>›</button>'
+      : '';
+  }
+
+  let temporizador = null;
+  $('#f-texto').addEventListener('input', () => {
+    clearTimeout(temporizador);
+    temporizador = setTimeout(() => { S.pagina = 1; pintarTabla(); }, 150);
+  });
+  ['#f-categoria', '#f-estado', '#f-incompletos'].forEach(s =>
+    $(s).addEventListener('change', () => { S.pagina = 1; pintarTabla(); }));
+
+  $('#paginacion').addEventListener('click', e => {
+    const b = e.target.closest('[data-pag]');
+    if (!b || b.disabled) return;
+    S.pagina = Number(b.dataset.pag);
+    pintarTabla();
+    $('.tabla-wrap').scrollTop = 0;
+  });
+
+  $('#tbody').addEventListener('click', async e => {
+    const b = e.target.closest('[data-accion]');
+    if (!b) return;
+    const codigo = b.dataset.codigo;
+    if (b.dataset.accion === 'editar') return abrirFormulario(codigo);
+    const nuevo = b.dataset.accion === 'publicar' ? 'PUBLICADO' : 'OCULTO';
+    cargando(true, 'Guardando…');
+    try {
+      const p = await llamar('panelCambiarEstado', codigo, nuevo);
+      reemplazarEnLista(p);
+      toast(codigo + ' → ' + nuevo);
+    } catch (err) {
+      toast(err.message, 'error');
+    } finally {
+      cargando(false);
+    }
+  });
+
+  function reemplazarEnLista(p) {
+    const i = S.productos.findIndex(x => x.codigo === p.codigo);
+    if (i === -1) S.productos.push(p); else S.productos[i] = p;
+    recalcularStats();
+    pintarTabla();
+    pintarDashboard();
+  }
+
+  function recalcularStats() {
+    const s = { total: S.productos.length, publicados: 0, pendientes: 0, ocultos: 0, borradores: 0,
+      categorias: S.categorias.filter(c => c.activa).length, sinImagen: 0, incompletos: 0 };
+    S.productos.forEach(p => {
+      if (p.estado === 'PUBLICADO') s.publicados++;
+      else if (p.estado === 'PENDIENTE') s.pendientes++;
+      else if (p.estado === 'OCULTO') s.ocultos++;
+      else if (p.estado === 'BORRADOR') s.borradores++;
+      if (!p.imagen) s.sinImagen++;
+      if (p.incompleto) s.incompletos++;
+    });
+    S.stats = s;
+  }
+
+  // -------------------------------------------------------------- formulario
+  const SLOTS = ['Principal', 'Secundaria 1 (_1)', 'Secundaria 2 (_2)'];
+
+  function pintarSlots(ids) {
+    $('#imagenes').innerHTML = SLOTS.map((t, i) =>
+      '<div class="img-slot">' +
+        '<div class="t">' + esc(t) + '</div>' +
+        '<div class="prev" id="prev-' + i + '">' + (ids[i] ? previewHtml(ids[i]) : 'Sin imagen') + '</div>' +
+        '<input data-slot="' + i + '" placeholder="Link o ID de Drive" value="' + esc(ids[i] || '') + '">' +
+      '</div>').join('');
+  }
+
+  function previewHtml(valor) {
+    const id = extraerId(valor);
+    return id ? '<img class="thumb" style="width:auto;height:auto" alt="" src="https://drive.google.com/thumbnail?sz=w400&id=' + encodeURIComponent(id) + '">' : 'Link no válido';
+  }
+
+  function extraerId(v) {
+    const s = String(v || '').trim();
+    const m = s.match(/\/d\/([a-zA-Z0-9_-]{10,})/) || s.match(/[?&]id=([a-zA-Z0-9_-]{10,})/);
+    if (m) return m[1];
+    return /^[a-zA-Z0-9_-]{15,}$/.test(s) ? s : '';
+  }
+
+  $('#imagenes').addEventListener('change', e => {
+    const inp = e.target.closest('input[data-slot]');
+    if (!inp) return;
+    $('#prev-' + inp.dataset.slot).innerHTML = inp.value.trim() ? previewHtml(inp.value) : 'Sin imagen';
+  });
+
+  async function abrirFormulario(codigo) {
+    $('#form').reset();
+    $$('#form .invalido').forEach(x => x.classList.remove('invalido'));
+    $('#caja-nueva-cat').classList.add('oculto');
+    refrescarCategorias();
+    if (!codigo) {
+      S.modo = 'crear'; S.editando = null;
+      $('#form-titulo').textContent = 'Nuevo producto';
+      $('#tab-formulario').textContent = 'Nuevo producto';
+      $('#form-meta').textContent = '';
+      $('#i-codigo').readOnly = false;
+      $('#i-estado').value = 'BORRADOR';
+      $('#btn-eliminar').classList.add('oculto');
+      pintarSlots(['', '', '']);
+      mostrarVista('formulario');
+      $('#i-codigo').focus();
+      return;
+    }
+    cargando(true);
+    try {
+      const p = await llamar('panelObtenerProducto', codigo);
+      S.modo = 'editar'; S.editando = p.codigo;
+      $('#form-titulo').textContent = 'Editar ' + p.codigo;
+      $('#tab-formulario').textContent = 'Editando ' + p.codigo;
+      $('#form-meta').textContent = 'Creado: ' + (p.fechaCreacion || '—') + ' · Actualizado: ' + (p.fechaActualizacion || '—');
+      $('#i-codigo').value = p.codigo;
+      $('#i-codigo').readOnly = true;
+      $('#i-nombre').value = p.nombre;
+      if (p.categoria && !S.categorias.some(c => c.nombre === p.categoria)) {
+        $('#i-categoria').insertAdjacentHTML('beforeend', '<option value="' + esc(p.categoria) + '">' + esc(p.categoria) + ' (no existe)</option>');
+      }
+      $('#i-categoria').value = p.categoria;
+      $('#i-subcategoria').value = p.subcategoria;
+      $('#i-precio').value = p.precio === '' ? '' : String(p.precio).replace('.', ',');
+      $('#i-estado').value = p.estado || 'BORRADOR';
+      $('#i-descripcion').value = p.descripcion;
+      $('#i-observaciones').value = p.observaciones;
+      $('#i-destacado').checked = !!p.destacado;
+      $('#btn-eliminar').classList.remove('oculto');
+      pintarSlots(p.imagenes);
+      mostrarVista('formulario');
+    } catch (e) {
+      toast(e.message, 'error');
+    } finally {
+      cargando(false);
+    }
+  }
+
+  function leerFormulario() {
+    return {
+      codigo: $('#i-codigo').value.trim().toUpperCase(),
+      nombre: $('#i-nombre').value.trim(),
+      categoria: $('#i-categoria').value,
+      subcategoria: $('#i-subcategoria').value.trim(),
+      precio: $('#i-precio').value.trim(),
+      estado: $('#i-estado').value,
+      descripcion: $('#i-descripcion').value.trim(),
+      observaciones: $('#i-observaciones').value.trim(),
+      destacado: $('#i-destacado').checked,
+      imagenes: $$('#imagenes input[data-slot]').map(i => i.value.trim())
+    };
+  }
+
+  /** Validación rápida en el navegador (el servidor valida todo de nuevo). */
+  function validarFormulario(d) {
+    const errores = [];
+    const marcar = (id, cond, msg) => { $(id).classList.toggle('invalido', cond); if (cond) errores.push(msg); };
+    marcar('#i-codigo', !/^[A-Z0-9][A-Z0-9.@\-]{1,39}$/.test(d.codigo), 'Código no válido.');
+    marcar('#i-nombre', !d.nombre, 'El nombre es obligatorio.');
+    marcar('#i-precio', d.precio !== '' && !/^[\d.,\s]+$/.test(d.precio), 'Precio no válido.');
+    return errores;
+  }
+
+  $('#form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const d = leerFormulario();
+    const errores = validarFormulario(d);
+    if (errores.length) return toast(errores.join('\n'), 'error');
+    cargando(true, 'Guardando…');
+    try {
+      const p = await llamar('panelGuardarProducto', d, S.modo);
+      reemplazarEnLista(p);
+      toast((S.modo === 'crear' ? 'Producto creado: ' : 'Guardado: ') + p.codigo);
+      $('#tab-formulario').textContent = 'Nuevo producto';
+      mostrarVista('productos');
+    } catch (err) {
+      toast(err.message, 'error');
+    } finally {
+      cargando(false);
+    }
+  });
+
+  $('#btn-cancelar').addEventListener('click', () => {
+    $('#tab-formulario').textContent = 'Nuevo producto';
+    mostrarVista('productos');
+  });
+
+  // Nueva categoría (sin prompt(): el cuadro de diálogo de Apps Script lo bloquea)
+  $('#btn-nueva-cat').addEventListener('click', () => {
+    $('#caja-nueva-cat').classList.toggle('oculto');
+    $('#i-nueva-cat').focus();
+  });
+  $('#btn-crear-cat').addEventListener('click', async () => {
+    const nombre = $('#i-nueva-cat').value.trim();
+    if (!nombre) return toast('Escribe el nombre de la categoría.', 'error');
+    cargando(true, 'Creando categoría…');
+    try {
+      const c = await llamar('panelCrearCategoria', nombre);
+      S.categorias.push(c);
+      refrescarCategorias();
+      $('#i-categoria').value = c.nombre;
+      $('#i-nueva-cat').value = '';
+      $('#caja-nueva-cat').classList.add('oculto');
+      recalcularStats(); pintarDashboard();
+      toast('Categoría creada: ' + c.nombre);
+    } catch (e) {
+      toast(e.message, 'error');
+    } finally {
+      cargando(false);
+    }
+  });
+
+  // ------------------------------------------------------------ eliminación
+  $('#btn-eliminar').addEventListener('click', () => {
+    $('#modal-codigo').textContent = S.editando;
+    $('#i-confirmar').value = '';
+    $('#btn-modal-eliminar').disabled = true;
+    $('#modal-eliminar').classList.remove('oculto');
+    $('#i-confirmar').focus();
+  });
+  $('#i-confirmar').addEventListener('input', () => {
+    $('#btn-modal-eliminar').disabled = $('#i-confirmar').value.trim().toUpperCase() !== S.editando;
+  });
+  $('#btn-modal-cancelar').addEventListener('click', () => $('#modal-eliminar').classList.add('oculto'));
+  $('#btn-modal-eliminar').addEventListener('click', async () => {
+    const codigo = S.editando;
+    cargando(true, 'Eliminando…');
+    try {
+      await llamar('panelEliminarProducto', codigo, $('#i-confirmar').value.trim());
+      S.productos = S.productos.filter(p => p.codigo !== codigo);
+      recalcularStats(); pintarDashboard(); pintarTabla();
+      $('#modal-eliminar').classList.add('oculto');
+      toast('Eliminado: ' + codigo);
+      mostrarVista('productos');
+    } catch (e) {
+      toast(e.message, 'error');
+    } finally {
+      cargando(false);
+    }
+  });
+
+  // -------------------------------------------------------------- importador
+  function pintarImportacion(r) {
+    const items = [
+      ['Archivos procesados', r.archivosProcesados],
+      ['Productos encontrados', r.productosEncontrados],
+      ['Productos nuevos', r.productosNuevos],
+      ['Imágenes asociadas', r.imagenesAsociadas],
+      ['Errores', r.errores, r.errores ? 'alerta' : ''],
+      ['Archivos ignorados', r.archivosIgnorados],
+      ['Ya importadas', r.yaImportadas],
+      ['Conflictos', r.conflictos, r.conflictos ? 'alerta' : '']
+    ];
+    $('#import-stats').innerHTML = items.map(i =>
+      '<div class="kpi ' + (i[2] || '') + '"><div class="v">' + esc(i[1] || 0) + '</div><div class="l">' + esc(i[0]) + '</div></div>').join('');
+
+    $('#progreso').classList.remove('oculto');
+    const barra = $('.barra');
+    if (r.terminado) {
+      barra.classList.remove('indeterminada');
+      $('#relleno').style.width = '100%';
+    } else if (r.total) {
+      barra.classList.remove('indeterminada');
+      $('#relleno').style.width = Math.min(99, Math.round(r.archivosProcesados / r.total * 100)) + '%';
+    } else {
+      barra.classList.add('indeterminada');
+    }
+    $('#progreso-texto').textContent = r.terminado
+      ? (r.cancelada ? 'Importación cancelada.' : 'Importación terminada — carpeta: ' + r.carpeta)
+      : 'Procesando "' + r.carpeta + '"… ' + r.archivosProcesados + (r.total ? ' de ' + r.total : '') + ' archivos';
+
+    const m = $('#import-muestra');
+    if (r.muestra && r.muestra.length) {
+      m.innerHTML = '<b>Errores y avisos (primeros casos):</b><ul>' + r.muestra.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul>';
+      m.classList.remove('oculto');
+    } else {
+      m.classList.add('oculto');
+    }
+  }
+
+  $('#btn-importar').addEventListener('click', async () => {
+    if (S.importando) return;
+    const entrada = $('#i-carpeta').value.trim();
+    if (!extraerCarpeta(entrada)) return toast('Pega un link o ID de carpeta de Drive válido.', 'error');
+    S.importando = true; S.cancelar = false;
+    $('#btn-importar').disabled = true;
+    $('#btn-cancelar-import').classList.remove('oculto');
+    try {
+      let r = await llamar('panelImportarIniciar', entrada);
+      if (r.reanudada) toast('Continuando importación anterior…', 'aviso');
+      pintarImportacion(r);
+      while (!r.terminado && !S.cancelar) {
+        r = await llamar('panelImportarLote');
+        if (r.sinEstado) break;
+        pintarImportacion(r);
+      }
+      if (S.cancelar) {
+        const c = await llamar('panelImportarCancelar');
+        if (c) pintarImportacion(c);
+        toast('Importación cancelada. Lo ya importado se conservó.', 'aviso');
+      } else {
+        toast('Importación terminada: ' + (r.productosNuevos || 0) + ' nuevos, ' + (r.imagenesAsociadas || 0) + ' imágenes.');
+      }
+      await cargarProductos();
+    } catch (e) {
+      toast(e.message + '\nPuedes pulsar el botón otra vez para continuar.', 'error');
+    } finally {
+      S.importando = false;
+      $('#btn-importar').disabled = false;
+      $('#btn-importar').textContent = 'IMPORTAR PRODUCTOS';
+      $('#btn-cancelar-import').classList.add('oculto');
+    }
+  });
+
+  $('#btn-cancelar-import').addEventListener('click', () => {
+    S.cancelar = true;
+    toast('Cancelando al terminar el lote actual…', 'aviso');
+  });
+
+  function extraerCarpeta(v) {
+    const s = String(v || '').trim();
+    const m = s.match(/\/folders\/([a-zA-Z0-9_-]{10,})/) || s.match(/[?&]id=([a-zA-Z0-9_-]{10,})/);
+    return m ? m[1] : (/^[a-zA-Z0-9_-]{15,}$/.test(s) ? s : '');
+  }
+
+  iniciar();
+})();
+</script>

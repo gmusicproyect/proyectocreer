@@ -9,7 +9,9 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test tests/*.test.ts"
+    "test": "npm run test:app && npm run test:catalog-importer",
+    "test:app": "node --experimental-strip-types --test tests/*.test.ts",
+    "test:catalog-importer": "node --test integrations/google-apps-script/catalogo-lucas/tests/*.test.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
