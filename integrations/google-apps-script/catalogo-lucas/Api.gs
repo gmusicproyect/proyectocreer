@@ -221,21 +221,7 @@ function getDatosAdminWeb_() {
 
   return {
     generado: new Date().toISOString(),
-    productos: productos.map(function (p) {
-      return {
-        codigo: p.codigo,
-        nombre: p.nombre,
-        categoria: p.categoria,
-        subcategoria: p.subcategoria,
-        precio: p.precioValido ? p.precio : null,
-        moneda: p.moneda || APP.MONEDA_DEFECTO,
-        estado: p.estado,
-        destacado: p.destacado,
-        incompleto: esIncompleto_(p),
-        imagen: urlImagenPublica_(p.imagenes[0]),
-        fechaActualizacion: fechaAdminWeb_(p.fechaActualizacion)
-      };
-    }),
+    productos: productos.map(productoAdminWeb_),
     categorias: categorias.map(function (c) {
       return {
         id: c.id,
@@ -250,6 +236,62 @@ function getDatosAdminWeb_() {
     cotizaciones: cotizaciones,
     stats: calcularEstadisticas_(productos, categorias)
   };
+}
+
+/** Forma de un producto en el panel (también se devuelve tras editarlo). */
+function productoAdminWeb_(p) {
+  return {
+    codigo: p.codigo,
+    nombre: p.nombre,
+    categoria: p.categoria,
+    subcategoria: p.subcategoria,
+    precio: p.precioValido ? p.precio : null,
+    moneda: p.moneda || APP.MONEDA_DEFECTO,
+    estado: p.estado,
+    destacado: p.destacado,
+    incompleto: esIncompleto_(p),
+    imagen: urlImagenPublica_(p.imagenes[0]),
+    fechaActualizacion: fechaAdminWeb_(p.fechaActualizacion)
+  };
+}
+
+/**
+ * Edición desde el panel. Solo precio y estado por ahora.
+ * entrada: { codigo, cambios: { precio?, estado? }, fechaActualizacion, autor }
+ */
+function actualizarProductoAdminWeb_(entrada) {
+  const codigo = normalizarCodigo_(entrada.codigo);
+  if (!esCodigoValido_(codigo)) throw new Error('Código de producto no válido.');
+  const cambios = entrada.cambios && typeof entrada.cambios === 'object' ? entrada.cambios : {};
+  const permitidos = ['precio', 'estado'];
+  const claves = Object.keys(cambios);
+  if (!claves.length) throw new Error('No hay cambios para guardar.');
+  claves.forEach(function (k) {
+    if (permitidos.indexOf(k) === -1) throw new Error('Campo no editable desde el panel: ' + k);
+  });
+  const limpio = {};
+  if (claves.indexOf('precio') !== -1) limpio.precio = texto_(cambios.precio).slice(0, 30);
+  if (claves.indexOf('estado') !== -1) limpio.estado = texto_(cambios.estado).toUpperCase();
+  const actualizado = actualizarCamposProducto_(codigo, limpio, {
+    fechaEsperada: texto_(entrada.fechaActualizacion),
+    autor: texto_(entrada.autor) || 'panel web'
+  });
+  return { ok: true, producto: productoAdminWeb_(actualizado) };
+}
+
+/** Token SOLO para escrituras del panel (Propiedades del script → ADMIN_WRITE_TOKEN). */
+function verificarTokenEscritura_(recibido) {
+  const esperado = PropertiesService.getScriptProperties().getProperty('ADMIN_WRITE_TOKEN');
+  if (!esperado) {
+    const e = new Error('La edición desde el panel no está configurada (falta ADMIN_WRITE_TOKEN).');
+    e.codigo = 'NO_CONFIGURADO';
+    throw e;
+  }
+  if (!recibido || texto_(recibido) !== esperado) {
+    const e2 = new Error('Solicitud no autorizada.');
+    e2.codigo = 'NO_AUTORIZADO';
+    throw e2;
+  }
 }
 
 function fechaAdminWeb_(valor) {
@@ -280,7 +322,12 @@ function doPost(e) {
   try {
     const entrada = JSON.parse((e && e.postData && e.postData.contents) || '{}');
     accion = texto_(entrada.accion) || 'cotizacion';
-    verificarTokenWeb_(entrada.apiToken);
+    if (accion === 'admin_actualizar_producto') {
+      // Escritura: token distinto al de lectura/cotizaciones.
+      verificarTokenEscritura_(entrada.apiToken);
+    } else {
+      verificarTokenWeb_(entrada.apiToken);
+    }
     delete entrada.apiToken;
     delete entrada.accion;
     if (accion === 'catalogo') {
@@ -290,13 +337,30 @@ function doPost(e) {
       cuerpo = registrarSolicitudWeb_(entrada);
     } else if (accion === 'admin_datos') {
       cuerpo = { ok: true, datos: getDatosAdminWeb_() };
+    } else if (accion === 'admin_actualizar_producto') {
+      cuerpo = actualizarProductoAdminWeb_(entrada);
     } else {
       throw new Error('Acción no válida: ' + accion);
     }
   } catch (err) {
-    const esLectura = accion === 'catalogo' || accion === 'admin_datos';
-    registrarLog_(accion === 'catalogo' ? 'CATALOGO_WEB_ERROR' : accion === 'admin_datos' ? 'ADMIN_WEB_ERROR' : 'COTIZACION_WEB_ERROR', '', err.message, 'ERROR');
-    cuerpo = { ok: false, error: esLectura ? 'No se pudieron leer los datos.' : 'No se pudo registrar la solicitud.' };
+    const etiquetas = {
+      catalogo: 'CATALOGO_WEB_ERROR', admin_datos: 'ADMIN_WEB_ERROR',
+      admin_actualizar_producto: 'ADMIN_EDICION_ERROR'
+    };
+    registrarLog_(etiquetas[accion] || 'COTIZACION_WEB_ERROR', '', err.message, 'ERROR');
+    if (accion === 'admin_actualizar_producto') {
+      // El panel es privado: puede mostrar el motivo (validación o conflicto),
+      // salvo en fallos de autorización/configuración.
+      const codigo = err.codigo || 'VALIDACION';
+      cuerpo = {
+        ok: false,
+        codigo: codigo,
+        error: codigo === 'NO_AUTORIZADO' || codigo === 'NO_CONFIGURADO' ? 'No autorizado.' : err.message
+      };
+    } else {
+      const esLectura = accion === 'catalogo' || accion === 'admin_datos';
+      cuerpo = { ok: false, error: esLectura ? 'No se pudieron leer los datos.' : 'No se pudo registrar la solicitud.' };
+    }
   }
   return ContentService.createTextOutput(JSON.stringify(cuerpo))
     .setMimeType(ContentService.MimeType.JSON);

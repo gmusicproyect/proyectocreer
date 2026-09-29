@@ -1,4 +1,6 @@
 import { EmptyState } from "@/components/empty-state";
+import { ProductQuickEdit } from "./product-quick-edit";
+import { priceToInput } from "./product-edit";
 import type {
   SheetsAdminCategory,
   SheetsAdminCustomer,
@@ -32,24 +34,45 @@ function formatDate(value: string) {
     : new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(date);
 }
 
-export function SheetsProductsPanel({ products }: { products: SheetsAdminProduct[] }) {
+export function SheetsProductsPanel({
+  products,
+  canEdit = false,
+}: {
+  products: SheetsAdminProduct[];
+  canEdit?: boolean;
+}) {
   if (!products.length) {
     return <EmptyState title="Nenhum produto cadastrado" description="Os produtos da planilha aparecerão aqui." />;
   }
   return (
     <div className="admin-data-list">
       {products.map((product) => (
-        <article className="admin-data-row" key={product.code}>
+        <article className={canEdit ? "admin-data-row editable" : "admin-data-row"} key={product.code}>
           <div className="admin-data-main">
             <strong>{product.name}</strong>
-            <span>Cód. {product.code} · {product.category || "Sem categoria"}</span>
-          </div>
-          <div className="admin-data-meta">
-            <strong>{formatPrice(product.price)}</strong>
-            <span className={`data-status status-${product.state.toLowerCase()}`}>
-              {statusLabels[product.state] ?? product.state}
+            <span>
+              Cód. {product.code} · {product.category || "Sem categoria"}
+              {product.incomplete ? " · incompleto" : ""}
             </span>
           </div>
+          {canEdit ? (
+            <ProductQuickEdit
+              key={product.code}
+              code={product.code}
+              currentLabel={`${formatPrice(product.price)} · ${statusLabels[product.state] ?? product.state}`}
+              name={product.name}
+              priceInput={priceToInput(product.price)}
+              state={product.state}
+              updatedAt={product.updatedAt}
+            />
+          ) : (
+            <div className="admin-data-meta">
+              <strong>{formatPrice(product.price)}</strong>
+              <span className={`data-status status-${product.state.toLowerCase()}`}>
+                {statusLabels[product.state] ?? product.state}
+              </span>
+            </div>
+          )}
         </article>
       ))}
     </div>
