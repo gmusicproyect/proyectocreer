@@ -87,7 +87,9 @@ function getProductosPublicadosJSON() {
 }
 
 function invalidarCacheApi_() {
-  try { CacheService.getScriptCache().remove(CACHE_API_CLAVE); } catch (e) { /* sin caché no pasa nada */ }
+  try {
+    CacheService.getScriptCache().removeAll([CACHE_API_CLAVE, CACHE_API_CLAVE + '_PRESENTACION']);
+  } catch (e) { /* sin caché no pasa nada */ }
 }
 
 /**
@@ -110,22 +112,70 @@ function doGet(e) {
 }
 
 /**
- * Punto de recepción de cotizaciones. El secreto se guarda en Propiedades del
- * script como QUOTE_API_TOKEN y nunca en una celda ni en el navegador.
+ * Catálogo para la web (Next.js). Lo pide el SERVIDOR de la web con el token
+ * privado, así la planilla puede quedar privada: nadie necesita leerla por CSV.
+ *   modo 'published'    -> igual que getProductosPublicados()
+ *   modo 'presentation' -> también PENDIENTE completos (laboratorio), precio puede ir vacío
+ * Nunca incluye costos, observaciones, carpeta, fechas ni ID interno.
+ */
+function getProductosCatalogoWeb_(modo) {
+  if (modo !== 'presentation') {
+    return getProductosPublicados().map(function (p) { return Object.assign({ estado: 'PUBLICADO' }, p); });
+  }
+  const cache = CacheService.getScriptCache();
+  const clave = CACHE_API_CLAVE + '_PRESENTACION';
+  const enCache = cache.get(clave);
+  if (enCache) return JSON.parse(enCache);
+
+  const lista = leerProductos_()
+    .filter(function (p) {
+      return (p.estado === 'PUBLICADO' || p.estado === 'PENDIENTE') &&
+        p.nombre && p.categoria && p.descripcion && p.imagenes[0];
+    })
+    .map(function (p) {
+      const publico = productoPublico_(p);
+      publico.estado = p.estado;
+      if (!p.precioValido) publico.precio = null;
+      return publico;
+    });
+  const json = JSON.stringify(lista);
+  if (json.length < 95000) cache.put(clave, json, LIMITES.CACHE_API_SEG);
+  return lista;
+}
+
+/** Comprueba el token privado (Propiedades del script → QUOTE_API_TOKEN). */
+function verificarTokenWeb_(recibido) {
+  const esperado = PropertiesService.getScriptProperties().getProperty('QUOTE_API_TOKEN');
+  if (!esperado) throw new Error('La conexión con la web no está configurada (falta QUOTE_API_TOKEN).');
+  if (!recibido || texto_(recibido) !== esperado) throw new Error('Solicitud no autorizada.');
+}
+
+/**
+ * Punto de entrada privado para el servidor de la web. Requiere apiToken.
+ *   { accion: 'catalogo', modo: 'presentation'|'published' } -> productos
+ *   { accion: 'cotizacion', ...solicitud }                     -> registra cotización
+ * Sin "accion" se asume 'cotizacion' (compatibilidad con la versión anterior).
  */
 function doPost(e) {
   let cuerpo;
+  let accion = 'cotizacion';
   try {
-    const esperado = PropertiesService.getScriptProperties().getProperty('QUOTE_API_TOKEN');
-    if (!esperado) throw new Error('La recepción de cotizaciones no está configurada.');
     const entrada = JSON.parse((e && e.postData && e.postData.contents) || '{}');
-    const recibido = texto_(entrada.apiToken);
-    if (!recibido || recibido !== esperado) throw new Error('Solicitud no autorizada.');
+    accion = texto_(entrada.accion) || 'cotizacion';
+    verificarTokenWeb_(entrada.apiToken);
     delete entrada.apiToken;
-    cuerpo = registrarSolicitudWeb_(entrada);
+    delete entrada.accion;
+    if (accion === 'catalogo') {
+      const productos = getProductosCatalogoWeb_(texto_(entrada.modo));
+      cuerpo = { ok: true, total: productos.length, productos: productos };
+    } else if (accion === 'cotizacion') {
+      cuerpo = registrarSolicitudWeb_(entrada);
+    } else {
+      throw new Error('Acción no válida: ' + accion);
+    }
   } catch (err) {
-    registrarLog_('COTIZACION_WEB_ERROR', '', err.message, 'ERROR');
-    cuerpo = { ok: false, error: 'No se pudo registrar la solicitud.' };
+    registrarLog_(accion === 'catalogo' ? 'CATALOGO_WEB_ERROR' : 'COTIZACION_WEB_ERROR', '', err.message, 'ERROR');
+    cuerpo = { ok: false, error: accion === 'catalogo' ? 'No se pudo leer el catálogo.' : 'No se pudo registrar la solicitud.' };
   }
   return ContentService.createTextOutput(JSON.stringify(cuerpo))
     .setMimeType(ContentService.MimeType.JSON);
