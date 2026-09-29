@@ -141,3 +141,54 @@ test("private web catalog endpoint requires the token and hides private fields",
   assert.equal("observaciones" in result.productos[0], false);
   assert.equal("driveFolder" in result.productos[0], false);
 });
+
+test("private admin endpoint joins products, customers and quote items", () => {
+  vm.runInContext(
+    `
+    function makeSheet_(headers, rows) {
+      return {
+        getLastColumn: function () { return headers.length; },
+        getLastRow: function () { return rows.length + 1; },
+        getRange: function (row, column, rowCount, columnCount) {
+          return { getValues: function () {
+            if (row === 1) return [headers.slice(column - 1, column - 1 + columnCount)];
+            return rows.slice(row - 2, row - 2 + rowCount).map(function (values) {
+              return values.slice(column - 1, column - 1 + columnCount);
+            });
+          }};
+        }
+      };
+    }
+    var adminSheets_ = {};
+    adminSheets_[SHEETS.CLIENTES] = makeSheet_(HEADERS.CLIENTES, [[
+      '1', 'Lucas', 'Empresa', 'lucas@example.com', '01199990000', '2026-09-29', '2026-09-29'
+    ]]);
+    adminSheets_[SHEETS.COTIZACIONES] = makeSheet_(HEADERS.COTIZACIONES, [[
+      '1', 'CR-20260929-001', '1', 'NUEVA', 'Urgente', '2026-09-29', 'key-1234567890123456',
+      'Lucas', 'Empresa', 'lucas@example.com', '01199990000'
+    ]]);
+    adminSheets_[SHEETS.COTIZACION_ITEMS] = makeSheet_(HEADERS.COTIZACION_ITEMS, [[
+      '1', '06100', 'Caderno', 50, 'Natural', 'Logo', 12.5, 'BRL'
+    ]]);
+    hoja_ = function (nombre) { return adminSheets_[nombre]; };
+    leerProductos_ = function () { return [{
+      codigo: '06100', nombre: 'Caderno', categoria: 'Escritório', subcategoria: '',
+      precio: 12.5, precioValido: true, moneda: 'BRL', imagenes: ['img-1'],
+      estado: 'PENDIENTE', destacado: false, descripcion: 'Caderno', fechaActualizacion: '2026-09-29'
+    }]; };
+    cargarCategorias_ = function () { return { lista: [{
+      id: '1', nombre: 'Escritório', slug: 'escritorio', descripcion: '', activa: true, orden: 1
+    }]}; };
+    `,
+    context,
+  );
+
+  const result = JSON.parse(
+    evaluate(`doPost({ postData: { contents: ${JSON.stringify(JSON.stringify({ accion: "admin_datos", apiToken: "tok" }))} } }).getContent()`),
+  );
+  assert.equal(result.ok, true);
+  assert.equal(result.datos.productos[0].codigo, "06100");
+  assert.equal(result.datos.clientes[0].telefono, "01199990000");
+  assert.equal(result.datos.cotizaciones[0].items[0].cantidad, 50);
+  assert.equal(result.datos.cotizaciones[0].contacto.email, "lucas@example.com");
+});

@@ -143,6 +143,123 @@ function getProductosCatalogoWeb_(modo) {
   return lista;
 }
 
+/**
+ * Vista privada para el panel web de Lucas. Solo se entrega después de validar
+ * el token del servidor. No se cachea porque clientes y cotizaciones deben
+ * aparecer inmediatamente en la administración.
+ */
+function getDatosAdminWeb_() {
+  const productos = leerProductos_();
+  const categorias = cargarCategorias_().lista;
+  const clientesTabla = filasTabla_(
+    hoja_(SHEETS.CLIENTES),
+    mapaColumnas_(hoja_(SHEETS.CLIENTES), HEADERS.CLIENTES)
+  );
+  const cotizacionesSh = hoja_(SHEETS.COTIZACIONES);
+  const cotizacionesTabla = filasTabla_(
+    cotizacionesSh,
+    mapaColumnas_(cotizacionesSh, COTIZACIONES_REQUERIDAS)
+  );
+  const itemsSh = hoja_(SHEETS.COTIZACION_ITEMS);
+  const itemsTabla = filasTabla_(
+    itemsSh,
+    mapaColumnas_(itemsSh, HEADERS.COTIZACION_ITEMS)
+  );
+
+  const clientes = clientesTabla.filas.map(function (fila) {
+    return {
+      id: texto_(fila[clientesTabla.map.ID]),
+      nombre: texto_(fila[clientesTabla.map.NOMBRE]),
+      empresa: texto_(fila[clientesTabla.map.EMPRESA]),
+      email: texto_(fila[clientesTabla.map.EMAIL]),
+      telefono: texto_(fila[clientesTabla.map.TELEFONO]),
+      fechaCreacion: fechaAdminWeb_(fila[clientesTabla.map.FECHA_CREACION]),
+      fechaActualizacion: fechaAdminWeb_(fila[clientesTabla.map.FECHA_ACTUALIZACION])
+    };
+  }).filter(function (cliente) { return cliente.id || cliente.email; });
+
+  const clientesPorId = {};
+  clientes.forEach(function (cliente) { clientesPorId[cliente.id] = cliente; });
+
+  const itemsPorCotizacion = {};
+  itemsTabla.filas.forEach(function (fila) {
+    const cotizacionId = texto_(fila[itemsTabla.map.COTIZACION_ID]);
+    if (!cotizacionId) return;
+    if (!itemsPorCotizacion[cotizacionId]) itemsPorCotizacion[cotizacionId] = [];
+    const precio = leerPrecio_(fila[itemsTabla.map.PRECIO_REFERENCIA]);
+    itemsPorCotizacion[cotizacionId].push({
+      codigo: normalizarCodigo_(fila[itemsTabla.map.CODIGO]),
+      nombre: texto_(fila[itemsTabla.map.NOMBRE]),
+      cantidad: Number(fila[itemsTabla.map.CANTIDAD]) || 0,
+      acabamento: texto_(fila[itemsTabla.map.ACABAMENTO]),
+      personalizacion: texto_(fila[itemsTabla.map.PERSONALIZACION]),
+      precioReferencia: precio.valido ? precio.valor : null,
+      moneda: texto_(fila[itemsTabla.map.MONEDA]) || APP.MONEDA_DEFECTO
+    });
+  });
+
+  const cotizaciones = cotizacionesTabla.filas.map(function (fila) {
+    const map = cotizacionesTabla.map;
+    const id = texto_(fila[map.ID]);
+    const cliente = clientesPorId[texto_(fila[map.CLIENTE_ID])] || {};
+    return {
+      id: id,
+      referencia: texto_(fila[map.REFERENCIA]),
+      estado: texto_(fila[map.ESTADO]).toUpperCase(),
+      notas: texto_(fila[map.NOTAS]),
+      fechaCreacion: fechaAdminWeb_(fila[map.FECHA_CREACION]),
+      contacto: {
+        nombre: valorColumnaAdmin_(fila, map, 'CONTACTO_NOMBRE') || cliente.nombre || '',
+        empresa: valorColumnaAdmin_(fila, map, 'CONTACTO_EMPRESA') || cliente.empresa || '',
+        email: valorColumnaAdmin_(fila, map, 'CONTACTO_EMAIL') || cliente.email || '',
+        telefono: valorColumnaAdmin_(fila, map, 'CONTACTO_TELEFONO') || cliente.telefono || ''
+      },
+      items: itemsPorCotizacion[id] || []
+    };
+  }).filter(function (cotizacion) { return cotizacion.id || cotizacion.referencia; })
+    .sort(function (a, b) { return b.fechaCreacion.localeCompare(a.fechaCreacion); });
+
+  return {
+    generado: new Date().toISOString(),
+    productos: productos.map(function (p) {
+      return {
+        codigo: p.codigo,
+        nombre: p.nombre,
+        categoria: p.categoria,
+        subcategoria: p.subcategoria,
+        precio: p.precioValido ? p.precio : null,
+        moneda: p.moneda || APP.MONEDA_DEFECTO,
+        estado: p.estado,
+        destacado: p.destacado,
+        incompleto: esIncompleto_(p),
+        imagen: urlImagenPublica_(p.imagenes[0]),
+        fechaActualizacion: fechaAdminWeb_(p.fechaActualizacion)
+      };
+    }),
+    categorias: categorias.map(function (c) {
+      return {
+        id: c.id,
+        nombre: c.nombre,
+        slug: c.slug,
+        descripcion: c.descripcion,
+        activa: c.activa,
+        orden: c.orden
+      };
+    }),
+    clientes: clientes,
+    cotizaciones: cotizaciones,
+    stats: calcularEstadisticas_(productos, categorias)
+  };
+}
+
+function fechaAdminWeb_(valor) {
+  return valor instanceof Date && !isNaN(valor.getTime()) ? valor.toISOString() : texto_(valor);
+}
+
+function valorColumnaAdmin_(fila, map, nombre) {
+  return map[nombre] === undefined ? '' : texto_(fila[map[nombre]]);
+}
+
 /** Comprueba el token privado (Propiedades del script → QUOTE_API_TOKEN). */
 function verificarTokenWeb_(recibido) {
   const esperado = PropertiesService.getScriptProperties().getProperty('QUOTE_API_TOKEN');
@@ -154,6 +271,7 @@ function verificarTokenWeb_(recibido) {
  * Punto de entrada privado para el servidor de la web. Requiere apiToken.
  *   { accion: 'catalogo', modo: 'presentation'|'published' } -> productos
  *   { accion: 'cotizacion', ...solicitud }                     -> registra cotización
+ *   { accion: 'admin_datos' }                                  -> datos privados del panel
  * Sin "accion" se asume 'cotizacion' (compatibilidad con la versión anterior).
  */
 function doPost(e) {
@@ -170,12 +288,15 @@ function doPost(e) {
       cuerpo = { ok: true, total: productos.length, productos: productos };
     } else if (accion === 'cotizacion') {
       cuerpo = registrarSolicitudWeb_(entrada);
+    } else if (accion === 'admin_datos') {
+      cuerpo = { ok: true, datos: getDatosAdminWeb_() };
     } else {
       throw new Error('Acción no válida: ' + accion);
     }
   } catch (err) {
-    registrarLog_(accion === 'catalogo' ? 'CATALOGO_WEB_ERROR' : 'COTIZACION_WEB_ERROR', '', err.message, 'ERROR');
-    cuerpo = { ok: false, error: accion === 'catalogo' ? 'No se pudo leer el catálogo.' : 'No se pudo registrar la solicitud.' };
+    const esLectura = accion === 'catalogo' || accion === 'admin_datos';
+    registrarLog_(accion === 'catalogo' ? 'CATALOGO_WEB_ERROR' : accion === 'admin_datos' ? 'ADMIN_WEB_ERROR' : 'COTIZACION_WEB_ERROR', '', err.message, 'ERROR');
+    cuerpo = { ok: false, error: esLectura ? 'No se pudieron leer los datos.' : 'No se pudo registrar la solicitud.' };
   }
   return ContentService.createTextOutput(JSON.stringify(cuerpo))
     .setMimeType(ContentService.MimeType.JSON);
