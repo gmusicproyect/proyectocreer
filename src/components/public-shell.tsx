@@ -11,15 +11,21 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
         <nav aria-label="Navegação principal">
           <Link href="/catalogo">Catálogo</Link>
           <Link href="/#sobre">Sobre a Creer</Link>
-          <Link href="/acesso">Área da equipe</Link>
         </nav>
         <CartLink />
       </header>
       {children}
       <footer>
-        <Brand />
-        <p>Presentes que fortalecem conexões.</p>
-        <span>Creer · Brindes corporativos</span>
+        <div className="footer-brand">
+          <Brand />
+          <p>Presentes que fortalecem conexões.</p>
+        </div>
+        <nav aria-label="Rodapé">
+          <Link href="/catalogo">Catálogo</Link>
+          <Link href="/orcamento">Meu orçamento</Link>
+          <Link href="/acesso">Área da equipe</Link>
+        </nav>
+        <span>© Creer · Brindes corporativos</span>
       </footer>
     </>
   );

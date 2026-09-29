@@ -43,7 +43,7 @@ export default async function Home() {
             </span>
           </div>
         </section>
-        <Catalog products={products} />
+        <Catalog products={products} variant="featured" />
         <section className="values" id="sobre">
           <div>
             <span>01</span>
