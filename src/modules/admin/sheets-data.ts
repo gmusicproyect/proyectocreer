@@ -81,6 +81,11 @@ export interface SheetsAdminSnapshot {
 
 let recentSnapshot: { value: SheetsAdminSnapshot; expiresAt: number } | null = null;
 
+/** Tras una edición, la próxima lectura va directo a la planilla. */
+export function clearAdminSnapshotCache() {
+  recentSnapshot = null;
+}
+
 function record(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
 }

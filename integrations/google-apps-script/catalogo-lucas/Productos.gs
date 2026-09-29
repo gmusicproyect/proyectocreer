@@ -306,18 +306,36 @@ function crearProducto_(data) {
   });
 }
 
-function actualizarProducto_(codigo, data) {
+/**
+ * @param {Object=} opciones
+ *   fechaEsperada: FECHA_ACTUALIZACION (ISO) que tenía quien edita. Si la fila
+ *                  cambió desde entonces, se rechaza con codigo CONFLICTO en vez
+ *                  de pisar el cambio de otra persona.
+ *   autor:         quién edita (se guarda en LOGS).
+ */
+function actualizarProducto_(codigo, data, opciones) {
+  opciones = opciones || {};
   return conLock_(function () {
     const t = cargarTablaProductos_();
     const c = normalizarCodigo_(codigo);
     const i = t.porCodigo.get(c);
     if (i === undefined) throw new Error('No existe el producto ' + c + '.');
     const previo = filaAProducto_(t.filas[i], t.map, i);
+    if (opciones.fechaEsperada !== undefined) {
+      const actual = previo.fechaActualizacion instanceof Date
+        ? fechaIso_(previo.fechaActualizacion) : texto_(previo.fechaActualizacion);
+      if (actual !== texto_(opciones.fechaEsperada)) {
+        const conflicto = new Error('El producto ' + c + ' fue modificado por otra persona mientras lo editabas.');
+        conflicto.codigo = 'CONFLICTO';
+        throw conflicto;
+      }
+    }
     const p = normalizarEntradaProducto_(data, previo, t);
     const fila = aplicarProductoAFila_(t.filas[i].slice(), p, t.map);
     t.sh.getRange(i + 2, 1, 1, t.ancho).setValues([fila]);
     const cambios = describirCambios_(previo, filaAProducto_(fila, t.map, i));
-    registrarLog_('PRODUCTO_ACTUALIZADO', c, cambios || 'Sin cambios', 'OK');
+    registrarLog_('PRODUCTO_ACTUALIZADO', c,
+      (opciones.autor ? '[' + texto_(opciones.autor).slice(0, 254) + '] ' : '') + (cambios || 'Sin cambios'), 'OK');
     invalidarCacheApi_();
     return filaAProducto_(fila, t.map, i);
   });
@@ -325,15 +343,26 @@ function actualizarProducto_(codigo, data) {
 
 /** Publicar / ocultar / etc. Reutiliza la validación completa. */
 function cambiarEstadoProducto_(codigo, estado) {
+  return actualizarCamposProducto_(codigo, { estado: estado });
+}
+
+/**
+ * Cambia solo algunos campos ({ precio, estado }) conservando el resto de la
+ * fila. Pasa por la validación completa (reglas para publicar, precio válido...).
+ */
+function actualizarCamposProducto_(codigo, cambios, opciones) {
   const t = cargarTablaProductos_();
   const i = t.porCodigo.get(normalizarCodigo_(codigo));
   if (i === undefined) throw new Error('No existe el producto ' + codigo + '.');
   const p = filaAProducto_(t.filas[i], t.map, i);
-  return actualizarProducto_(p.codigo, {
+  const data = {
     nombre: p.nombre, categoria: p.categoria, subcategoria: p.subcategoria,
     descripcion: p.descripcion, precio: p.precio === null ? '' : p.precio,
-    estado: estado, destacado: p.destacado, observaciones: p.observaciones, imagenes: p.imagenes
-  });
+    estado: p.estado, destacado: p.destacado, observaciones: p.observaciones, imagenes: p.imagenes
+  };
+  if (Object.prototype.hasOwnProperty.call(cambios, 'precio')) data.precio = cambios.precio;
+  if (Object.prototype.hasOwnProperty.call(cambios, 'estado')) data.estado = cambios.estado;
+  return actualizarProducto_(p.codigo, data, opciones);
 }
 
 /**

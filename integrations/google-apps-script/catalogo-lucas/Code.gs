@@ -37,6 +37,32 @@ function onOpen() {
     .addToUi();
 }
 
+/**
+ * Disparador simple: cuando alguien edita PRODUCTOS a mano, se actualiza
+ * FECHA_ACTUALIZACION de esas filas. Así el panel detecta que la fila cambió
+ * y no pisa el trabajo hecho directamente en la hoja.
+ */
+function onEdit(e) {
+  try {
+    if (!e || !e.range) return;
+    const sh = e.range.getSheet();
+    if (sh.getName() !== SHEETS.PRODUCTOS) return;
+    const desde = Math.max(e.range.getRow(), 2);
+    const hasta = e.range.getLastRow();
+    if (hasta < desde) return;
+    const map = mapaColumnas_(sh, ['FECHA_ACTUALIZACION']);
+    const col = map.FECHA_ACTUALIZACION + 1;
+    // Editar solo la columna de fecha no cuenta como cambio.
+    if (e.range.getColumn() === col && e.range.getLastColumn() === col) return;
+    const ahora = new Date();
+    const valores = [];
+    for (let r = desde; r <= hasta; r++) valores.push([ahora]);
+    sh.getRange(desde, col, valores.length, 1).setValues(valores);
+  } catch (err) {
+    // Un disparador simple nunca debe interrumpir la edición.
+  }
+}
+
 // -----------------------------------------------------------------------------
 // 2. INICIALIZACIÓN
 // -----------------------------------------------------------------------------

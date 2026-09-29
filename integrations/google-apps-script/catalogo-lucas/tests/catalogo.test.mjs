@@ -192,3 +192,39 @@ test("private admin endpoint joins products, customers and quote items", () => {
   assert.equal(result.datos.cotizaciones[0].items[0].cantidad, 50);
   assert.equal(result.datos.cotizaciones[0].contacto.email, "lucas@example.com");
 });
+
+test("panel edits need the separate write token and only touch price/state", () => {
+  vm.runInContext(
+    `
+    PropertiesService = { getScriptProperties: function () {
+      return { getProperty: function (k) {
+        return k === 'QUOTE_API_TOKEN' ? 'tok' : k === 'ADMIN_WRITE_TOKEN' ? 'write' : null;
+      } };
+    }};
+    registrarLog_ = function () {};
+    __llamadas = [];
+    actualizarCamposProducto_ = function (codigo, cambios, opciones) {
+      __llamadas.push({ codigo: codigo, cambios: cambios, opciones: opciones });
+      return { codigo: codigo, nombre: 'Caneca', categoria: 'Bebidas', subcategoria: '', precio: 10, precioValido: true,
+        moneda: 'BRL', estado: 'PUBLICADO', destacado: false, imagenes: ['img'], descripcion: 'x', fechaActualizacion: '' };
+    };
+    `,
+    context,
+  );
+  const post = (body) =>
+    JSON.parse(evaluate(`doPost({ postData: { contents: ${JSON.stringify(JSON.stringify(body))} } }).getContent()`));
+  const edit = { accion: "admin_actualizar_producto", codigo: "18839", cambios: { precio: "10,00", estado: "publicado" }, fechaActualizacion: "v1", autor: "lucas@creer.com" };
+
+  const withReadToken = post({ ...edit, apiToken: "tok" });
+  assert.equal(withReadToken.ok, false);
+  assert.equal(withReadToken.codigo, "NO_AUTORIZADO");
+
+  assert.equal(post({ ...edit, apiToken: "write", cambios: { nombre: "x" } }).ok, false);
+
+  const saved = post({ ...edit, apiToken: "write" });
+  assert.equal(saved.ok, true);
+  const call = JSON.parse(evaluate("JSON.stringify(__llamadas[__llamadas.length - 1])"));
+  assert.deepEqual(call.cambios, { precio: "10,00", estado: "PUBLICADO" });
+  assert.equal(call.opciones.fechaEsperada, "v1");
+  assert.equal(call.opciones.autor, "lucas@creer.com");
+});

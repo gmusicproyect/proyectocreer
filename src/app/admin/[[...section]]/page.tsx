@@ -11,7 +11,11 @@ import {
   SheetsQuotesPanel,
 } from "@/modules/admin/sheets-panels";
 import { logout } from "@/modules/auth/actions";
-import { getAdminAccess } from "@/modules/auth/access";
+import {
+  canEditSheetsCatalog,
+  canReadSheetsData,
+  getAdminAccess,
+} from "@/modules/auth/access";
 import { demoProducts } from "@/modules/catalog/demo-products";
 import { DemoQuotesPanel } from "@/modules/quotations/demo-quotes-panel";
 import { LiveQuotesPanel } from "@/modules/quotations/live-quotes-panel";
@@ -23,7 +27,9 @@ export default async function Admin({
 }) {
   const access = await getAdminAccess();
   if (!access) redirect("/acesso?erro=acesso");
-  const sheets = await getSheetsAdminSnapshot();
+  // Clientes e cotizações da planilha: só para o tenant dono dela.
+  const sheets = canReadSheetsData(access) ? await getSheetsAdminSnapshot() : null;
+  const canEdit = Boolean(sheets) && canEditSheetsCatalog(access);
   const { section = [] } = await params;
   const current = modules.find((m) => m.slug === section.join("/"));
   if (!current) notFound();
@@ -146,7 +152,7 @@ export default async function Admin({
               </div>
               {current.slug === "produtos" ? (
                 sheets ? (
-                  <SheetsProductsPanel products={sheets.products} />
+                  <SheetsProductsPanel products={sheets.products} canEdit={canEdit} />
                 ) : (
                   <div className="admin-product-list">
                     {demoProducts.map((product) => (

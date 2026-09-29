@@ -751,6 +751,66 @@ footer > span {
   padding: 17px 0;
   border-bottom: 1px solid var(--line);
 }
+.admin-data-row.editable {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.quick-edit {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.quick-edit label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.quick-edit input,
+.quick-edit select {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 8px 10px;
+  font-size: 14px;
+  color: var(--ink);
+}
+.quick-edit input {
+  width: 120px;
+  text-align: right;
+}
+.quick-edit input:focus,
+.quick-edit select:focus {
+  outline: 2px solid #d9c4b3;
+  border-color: var(--brown);
+}
+.button.small {
+  padding: 9px 16px;
+  font-size: 13px;
+}
+.button:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+.quick-edit-current {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.quick-edit-msg {
+  flex-basis: 100%;
+  font-size: 12px;
+  margin: 0;
+}
+.quick-edit-msg.ok {
+  color: #3f7a4a;
+}
+.quick-edit-msg.error {
+  color: #a1392b;
+}
 .admin-data-main,
 .admin-data-meta {
   display: flex;

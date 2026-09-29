@@ -53,3 +53,25 @@ Drive, la configuración de Apps Script ni el token de conexión.
    URL `/exec` no cambia).
 4. Verificar que la web muestra el catálogo real.
 5. Recién entonces, en la planilla: **Compartir → Acceso general → Restringido**.
+
+## Edición desde el panel (precio y estado)
+
+- El panel envía `{ accion: "admin_actualizar_producto" }` a Apps Script con un
+  **token de escritura propio** (`ADMIN_WRITE_TOKEN` en Propiedades del script y
+  `GOOGLE_ADMIN_WRITE_TOKEN` en el servidor). El token de lectura/cotizaciones no
+  sirve para escribir.
+- Next revisa en el servidor, en cada guardado: sesión, rol con `catalog:write`
+  (tenant_admin o catalog_editor) y que la cuenta pertenezca al tenant dueño de
+  la planilla (`CREER_TENANT_SLUG`, por defecto `creer`). Miembros de otro
+  tenant tampoco ven clientes ni cotizaciones.
+- Apps Script reutiliza la validación de `Productos.gs` (reglas para publicar,
+  precio válido) y registra en LOGS el email de quien editó.
+- Control de conflictos: el panel envía la `FECHA_ACTUALIZACION` que vio. Si la
+  fila cambió (otra persona o edición directa en la hoja, gracias a `onEdit`),
+  el guardado se rechaza y el panel muestra los valores actuales.
+
+Activación:
+1. Apps Script: pegar `Api.gs`, `Productos.gs` y `Code.gs`; en Propiedades del
+   script crear `ADMIN_WRITE_TOKEN` (valor largo y aleatorio, distinto de
+   `QUOTE_API_TOKEN`); publicar **nueva versión** de la implementación.
+2. Servidor web: `GOOGLE_ADMIN_WRITE_TOKEN` con el mismo valor.
