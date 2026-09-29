@@ -109,3 +109,35 @@ test("validates quote requests without exposing or accepting malformed data", ()
     /clave de solicitud válida/,
   );
 });
+
+test("private web catalog endpoint requires the token and hides private fields", () => {
+  vm.runInContext(
+    `
+    PropertiesService = { getScriptProperties: function () {
+      return { getProperty: function (k) { return k === 'QUOTE_API_TOKEN' ? 'tok' : null; } };
+    }};
+    ContentService = { MimeType: { JSON: 'json' }, createTextOutput: function (s) {
+      return { setMimeType: function () { return this; }, getContent: function () { return s; } };
+    }};
+    registrarLog_ = function () {};
+    leerProductos_ = function () { return [
+      { codigo: '00001', nombre: 'Caneta', categoria: 'Bolsas', subcategoria: '', descripcion: 'Leve', precio: null, precioValido: true, moneda: 'BRL', imagenes: ['img-1'], estado: 'PENDIENTE', destacado: false, observaciones: 'privada', driveFolder: 'privada' },
+      { codigo: '00002', nombre: 'Sem foto', categoria: 'Bolsas', subcategoria: '', descripcion: 'x', precio: null, precioValido: true, moneda: 'BRL', imagenes: [''], estado: 'PENDIENTE', destacado: false },
+      { codigo: '00003', nombre: 'Oculto', categoria: 'Bolsas', subcategoria: '', descripcion: 'x', precio: 1, precioValido: true, moneda: 'BRL', imagenes: ['img-3'], estado: 'OCULTO', destacado: false }
+    ]; };
+    `,
+    context,
+  );
+  const post = (body) =>
+    JSON.parse(evaluate(`doPost({ postData: { contents: ${JSON.stringify(JSON.stringify(body))} } }).getContent()`));
+
+  assert.equal(post({ accion: "catalogo", modo: "presentation" }).ok, false);
+  assert.equal(post({ accion: "catalogo", modo: "presentation", apiToken: "mal" }).ok, false);
+
+  const result = post({ accion: "catalogo", modo: "presentation", apiToken: "tok" });
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.productos.map((p) => p.codigo), ["00001"]);
+  assert.equal(result.productos[0].estado, "PENDIENTE");
+  assert.equal("observaciones" in result.productos[0], false);
+  assert.equal("driveFolder" in result.productos[0], false);
+});

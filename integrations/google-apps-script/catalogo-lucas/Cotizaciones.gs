@@ -73,6 +73,21 @@ function filasTabla_(sh, map) {
   };
 }
 
+/**
+ * Escribe filas a partir de `desdeFila`, agrandando la hoja si hace falta.
+ * Las columnas indicadas (índices base 0) se fuerzan a texto ANTES de escribir,
+ * para que "00001" o "0800..." no pierdan los ceros iniciales.
+ */
+function escribirFilasTexto_(sh, desdeFila, filas, columnasTexto) {
+  if (!filas.length) return;
+  const ancho = filas[0].length;
+  asegurarFilas_(sh, desdeFila + filas.length - 1);
+  (columnasTexto || []).forEach(function (c) {
+    if (c !== undefined && c !== null && c >= 0) sh.getRange(desdeFila, c + 1, filas.length, 1).setNumberFormat('@');
+  });
+  sh.getRange(desdeFila, 1, filas.length, ancho).setValues(filas);
+}
+
 function registrarSolicitudWeb_(entrada) {
   const solicitud = normalizarSolicitudWeb_(entrada);
   return conLock_(function () {
@@ -88,7 +103,7 @@ function registrarSolicitudWeb_(entrada) {
     });
 
     const shCotizaciones = hoja_(SHEETS.COTIZACIONES);
-    const mapCotizaciones = mapaColumnas_(shCotizaciones, HEADERS.COTIZACIONES);
+    const mapCotizaciones = mapaColumnas_(shCotizaciones, COTIZACIONES_REQUERIDAS);
     const tablaCotizaciones = filasTabla_(shCotizaciones, mapCotizaciones);
     const cotizacionExistente = tablaCotizaciones.filas.find(function (fila) {
       return texto_(fila[mapCotizaciones.CLAVE_SOLICITUD]) === solicitud.requestKey;
@@ -101,39 +116,53 @@ function registrarSolicitudWeb_(entrada) {
       };
     }
 
+    // CLIENTES: se busca por email. Un formulario público NO puede sobrescribir
+    // los datos de un cliente existente (cualquiera que conozca su correo podría
+    // cambiarle el teléfono). Solo se completan campos vacíos; lo que la persona
+    // escribió en esta solicitud queda guardado en la propia cotización.
     const shClientes = hoja_(SHEETS.CLIENTES);
     const mapClientes = mapaColumnas_(shClientes, HEADERS.CLIENTES);
     const tablaClientes = filasTabla_(shClientes, mapClientes);
     let clienteId = '';
-    let clienteFila = -1;
-
+    let clienteIndice = -1;
     tablaClientes.filas.some(function (fila, index) {
       if (texto_(fila[mapClientes.EMAIL]).toLowerCase() === solicitud.customer.email) {
         clienteId = fila[mapClientes.ID];
-        clienteFila = index + 2;
+        clienteIndice = index;
         return true;
       }
       return false;
     });
 
-    const filaCliente = new Array(tablaClientes.ancho).fill('');
-    if (clienteFila > 0) {
-      const anterior = shClientes.getRange(clienteFila, 1, 1, tablaClientes.ancho).getValues()[0];
-      anterior[mapClientes.NOMBRE] = celdaSegura_(solicitud.customer.name);
-      anterior[mapClientes.EMPRESA] = celdaSegura_(solicitud.customer.company);
-      anterior[mapClientes.TELEFONO] = celdaSegura_(solicitud.customer.phone);
-      anterior[mapClientes.FECHA_ACTUALIZACION] = ahora;
-      shClientes.getRange(clienteFila, 1, 1, tablaClientes.ancho).setValues([anterior]);
+    const datosCliente = {
+      NOMBRE: solicitud.customer.name,
+      EMPRESA: solicitud.customer.company,
+      TELEFONO: solicitud.customer.phone
+    };
+    if (clienteIndice >= 0) {
+      const anterior = tablaClientes.filas[clienteIndice].slice();
+      let completo = false;
+      Object.keys(datosCliente).forEach(function (col) {
+        if (!texto_(anterior[mapClientes[col]])) {
+          anterior[mapClientes[col]] = celdaSegura_(datosCliente[col]);
+          completo = true;
+        }
+      });
+      if (completo) {
+        anterior[mapClientes.FECHA_ACTUALIZACION] = ahora;
+        escribirFilasTexto_(shClientes, clienteIndice + 2, [anterior], [mapClientes.TELEFONO]);
+      }
     } else {
       clienteId = siguienteIdTabla_(tablaClientes.filas, mapClientes.ID);
+      const filaCliente = new Array(tablaClientes.ancho).fill('');
       filaCliente[mapClientes.ID] = clienteId;
-      filaCliente[mapClientes.NOMBRE] = celdaSegura_(solicitud.customer.name);
-      filaCliente[mapClientes.EMPRESA] = celdaSegura_(solicitud.customer.company);
+      filaCliente[mapClientes.NOMBRE] = celdaSegura_(datosCliente.NOMBRE);
+      filaCliente[mapClientes.EMPRESA] = celdaSegura_(datosCliente.EMPRESA);
       filaCliente[mapClientes.EMAIL] = celdaSegura_(solicitud.customer.email);
-      filaCliente[mapClientes.TELEFONO] = celdaSegura_(solicitud.customer.phone);
+      filaCliente[mapClientes.TELEFONO] = celdaSegura_(datosCliente.TELEFONO);
       filaCliente[mapClientes.FECHA_CREACION] = ahora;
       filaCliente[mapClientes.FECHA_ACTUALIZACION] = ahora;
-      shClientes.appendRow(filaCliente);
+      escribirFilasTexto_(shClientes, Math.max(shClientes.getLastRow(), 1) + 1, [filaCliente], [mapClientes.TELEFONO]);
     }
 
     const cotizacionId = siguienteIdTabla_(tablaCotizaciones.filas, mapCotizaciones.ID);
@@ -148,7 +177,18 @@ function registrarSolicitudWeb_(entrada) {
     filaCotizacion[mapCotizaciones.NOTAS] = celdaSegura_(solicitud.notes);
     filaCotizacion[mapCotizaciones.FECHA_CREACION] = ahora;
     filaCotizacion[mapCotizaciones.CLAVE_SOLICITUD] = solicitud.requestKey;
-    shCotizaciones.appendRow(filaCotizacion);
+    // Copia de lo que escribió la persona (si las columnas ya existen).
+    const contacto = {
+      CONTACTO_NOMBRE: solicitud.customer.name,
+      CONTACTO_EMPRESA: solicitud.customer.company,
+      CONTACTO_EMAIL: solicitud.customer.email,
+      CONTACTO_TELEFONO: solicitud.customer.phone
+    };
+    Object.keys(contacto).forEach(function (col) {
+      if (mapCotizaciones[col] !== undefined) filaCotizacion[mapCotizaciones[col]] = celdaSegura_(contacto[col]);
+    });
+    escribirFilasTexto_(shCotizaciones, Math.max(shCotizaciones.getLastRow(), 1) + 1, [filaCotizacion],
+      [mapCotizaciones.CLAVE_SOLICITUD, mapCotizaciones.CONTACTO_TELEFONO]);
 
     const shItems = hoja_(SHEETS.COTIZACION_ITEMS);
     const mapItems = mapaColumnas_(shItems, HEADERS.COTIZACION_ITEMS);
@@ -167,8 +207,7 @@ function registrarSolicitudWeb_(entrada) {
       fila[mapItems.MONEDA] = producto.moneda || getConfig_('MONEDA') || APP.MONEDA_DEFECTO;
       return fila;
     });
-    shItems.getRange(shItems.getLastRow() + 1, 1, filasItems.length, anchoItems)
-      .setValues(filasItems);
+    escribirFilasTexto_(shItems, Math.max(shItems.getLastRow(), 1) + 1, filasItems, [mapItems.CODIGO]);
 
     registrarLog_('COTIZACION_WEB', referencia,
       solicitud.items.length + ' producto(s) · ' + solicitud.customer.company, 'OK');
