@@ -1,11 +1,11 @@
 import { PublicShell } from "@/components/public-shell";
-import { hasSupabaseConfig } from "@/lib/supabase/config";
+import { hasQuotePersistenceConfig } from "@/lib/quotes/config";
 import { QuoteBuilder } from "@/modules/quotations/quote-builder";
 
 export default function Page() {
   return (
     <PublicShell>
-      <QuoteBuilder remote={hasSupabaseConfig()} />
+      <QuoteBuilder remote={hasQuotePersistenceConfig()} />
     </PublicShell>
   );
 }

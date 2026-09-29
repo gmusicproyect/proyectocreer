@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 
+import {
+  getGoogleSheetsQuoteConfig,
+  hasGoogleSheetsQuoteConfig,
+} from "@/lib/quotes/config";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 
@@ -20,7 +24,7 @@ interface QuotePayload {
 }
 
 export async function POST(request: Request) {
-  if (!hasSupabaseConfig()) {
+  if (!hasGoogleSheetsQuoteConfig() && !hasSupabaseConfig()) {
     return NextResponse.json({ error: "Banco de dados indisponível." }, { status: 503 });
   }
 
@@ -36,11 +40,40 @@ export async function POST(request: Request) {
     !customer?.name?.trim() ||
     !customer.company?.trim() ||
     !customer.email?.trim() ||
+    !customer.phone?.trim() ||
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.email.trim()) ||
     !Array.isArray(items) ||
     items.length === 0 ||
     items.length > 50
   ) {
     return NextResponse.json({ error: "Preencha os dados obrigatórios." }, { status: 400 });
+  }
+
+  if (hasGoogleSheetsQuoteConfig()) {
+    try {
+      const config = getGoogleSheetsQuoteConfig();
+      const response = await fetch(config.url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...payload, apiToken: config.token }),
+        cache: "no-store",
+        signal: AbortSignal.timeout(10000),
+      });
+      const result = (await response.json()) as {
+        ok?: boolean;
+        id?: string;
+        error?: string;
+      };
+      if (!response.ok || !result.ok || !result.id) {
+        throw new Error(result.error ?? "Resposta inválida do Google Sheets.");
+      }
+      return NextResponse.json({ id: result.id }, { status: 201 });
+    } catch {
+      return NextResponse.json(
+        { error: "Não foi possível registrar a solicitação. Tente novamente." },
+        { status: 502 },
+      );
+    }
   }
 
   const supabase = await createClient();

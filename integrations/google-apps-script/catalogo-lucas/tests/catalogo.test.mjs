@@ -6,7 +6,7 @@ import vm from "node:vm";
 const root = new URL("../", import.meta.url);
 const context = vm.createContext({ console });
 
-for (const file of ["Config.gs", "Productos.gs", "DriveImporter.gs", "Api.gs"]) {
+for (const file of ["Config.gs", "Productos.gs", "DriveImporter.gs", "Cotizaciones.gs", "Api.gs"]) {
   vm.runInContext(readFileSync(new URL(file, root), "utf8"), context, {
     filename: file,
   });
@@ -72,4 +72,38 @@ test("public API returns only complete products from active categories", () => {
   assert.equal(products[0].codigo, "P@14962");
   assert.equal("observaciones" in products[0], false);
   assert.equal("driveFolder" in products[0], false);
+});
+
+test("validates quote requests without exposing or accepting malformed data", () => {
+  const request = JSON.stringify({
+    customer: {
+      name: "João",
+      company: "Empresa",
+      email: "joao@example.com",
+      phone: "+55 11 99999-0000",
+    },
+    notes: "=IMPORTXML(\"x\")",
+    items: [
+      {
+        code: "00001",
+        name: "Caneta",
+        quantity: 100,
+        color: "Natural",
+        personalization: "Logo em uma cor",
+      },
+    ],
+  });
+  const result = JSON.parse(
+    evaluate(`JSON.stringify(normalizarSolicitudWeb_(${request}))`),
+  );
+  assert.equal(result.customer.email, "joao@example.com");
+  assert.equal(result.items[0].codigo, "00001");
+  assert.equal(result.items[0].cantidad, 100);
+  assert.throws(
+    () =>
+      evaluate(
+        "normalizarSolicitudWeb_({customer:{},items:[]})",
+      ),
+    /Faltan los datos obligatorios/,
+  );
 });

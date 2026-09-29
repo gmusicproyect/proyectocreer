@@ -17,6 +17,8 @@ carpeta, fechas e información de importación nunca forman parte del objeto que
 se entrega a la interfaz.
 
 El flujo de cotización permite elegir producto, acabado, cantidad y
-personalización. Sin Supabase configurado, las solicitudes permanecen en el
-navegador del laboratorio. Con Supabase configurado, /api/quotes registra la
-solicitud en la base protegida por las políticas del proyecto.
+personalización. Si la aplicación web de Apps Script y su token están
+configurados, /api/quotes registra el cliente y la solicitud en CLIENTES,
+COTIZACIONES y COTIZACION_ITEMS. Supabase sigue disponible como segunda opción.
+Sin ninguna persistencia configurada, el laboratorio conserva las solicitudes
+en el navegador.

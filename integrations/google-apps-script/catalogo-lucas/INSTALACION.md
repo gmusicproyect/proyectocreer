@@ -17,7 +17,8 @@ GOOGLE SHEETS  ──  PRODUCTOS · CATEGORIAS · IMPORTACIONES · CONFIGURACION
      │
      ├── Productos.gs / Validaciones.gs ── reglas de negocio y auditoría
      ├── Code.gs + Panel.html ─────────── menú "CATÁLOGO LUCAS" y panel administrador
-     └── Api.gs ──────────────────────── getProductosPublicados() / doGet() → catálogo web futuro
+     ├── Api.gs ──────────────────────── doGet() → catálogo público / doPost() → cotizaciones
+     └── Cotizaciones.gs ─────────────── clientes, cotizaciones e ítems
 ```
 
 | Archivo | Responsabilidad |
@@ -28,6 +29,7 @@ GOOGLE SHEETS  ──  PRODUCTOS · CATEGORIAS · IMPORTACIONES · CONFIGURACION
 | `DriveImporter.gs` | `importarProductosDesdeDrive(folderId)`, procesamiento por lotes con reanudación, `sincronizacionDiaria()`. |
 | `Validaciones.gs` | `validarBase()` y `generarResumen()`. |
 | `Api.gs` | `getProductosPublicados()`, `getProductosPorCategoria()`, `doGet()` y la estructura de `generarDescripcionIA()`. |
+| `Cotizaciones.gs` | Valida la solicitud web, actualiza o crea el cliente y registra la cotización con sus productos. |
 | `Panel.html` · `Styles.html` · `Scripts.html` | Panel administrador (estructura, estilos, lógica). |
 
 **Decisiones de diseño importantes**
@@ -50,7 +52,7 @@ GOOGLE SHEETS  ──  PRODUCTOS · CATEGORIAS · IMPORTACIONES · CONFIGURACION
 2. En esa hoja ve a **Extensiones → Apps Script**.
 3. En el editor:
    - Renombra `Código.gs` a `Code.gs` y reemplaza su contenido por el de `Code.gs`.
-   - Crea los archivos de script con **+ → Script**: `Config`, `Productos`, `DriveImporter`, `Validaciones`, `Api`. Apps Script agrega `.gs` solo.
+   - Crea los archivos de script con **+ → Script**: `Config`, `Productos`, `DriveImporter`, `Validaciones`, `Api`, `Cotizaciones`. Apps Script agrega `.gs` solo.
    - Crea los archivos HTML con **+ → HTML**: `Panel`, `Styles`, `Scripts`. Apps Script agrega `.html` solo.
    - Pega en cada archivo el contenido correspondiente, **completo**.
 4. En **⚙️ Configuración del proyecto**:
@@ -64,7 +66,7 @@ GOOGLE SHEETS  ──  PRODUCTOS · CATEGORIAS · IMPORTACIONES · CONFIGURACION
 
 Ve a **CATÁLOGO LUCAS → ⚙️ Sistema → Inicializar / reparar hojas**. Esto:
 
-- crea `PRODUCTOS`, `CATEGORIAS`, `IMPORTACIONES`, `CONFIGURACION`, `LOGS` y `VALIDACION` con sus encabezados;
+- crea `PRODUCTOS`, `CATEGORIAS`, `IMPORTACIONES`, `CONFIGURACION`, `LOGS`, `VALIDACION`, `CLIENTES`, `COTIZACIONES` y `COTIZACION_ITEMS` con sus encabezados;
 - carga los valores por defecto en CONFIGURACION (`MONEDA = BRL`, `VERSION_SISTEMA`, etc.);
 - agrega la lista desplegable de ESTADO, la casilla DESTACADO, la lista de CATEGORIA y los formatos de precio y fecha;
 - marca **en rojo** los códigos duplicados;
@@ -152,13 +154,23 @@ Si alguien escribe un duplicado a mano en la hoja, el sistema no lo borra: lo re
 
 ---
 
-## 9. Catálogo web (siguiente etapa)
+## 9. Catálogo web y recepción de cotizaciones
 
 - **Desde el propio script:** `getProductosPublicados()` y `getProductosPorCategoria('bebidas')`.
 - **Desde fuera, como Web App:** ve a **Implementar → Nueva implementación → Aplicación web**, con "Ejecutar como: Yo" y "Acceso: Cualquier persona". La URL `/exec` devuelve JSON, y `/exec?categoria=bebidas` lo filtra por categoría.
 - **Campos que salen:** código, nombre, categoría, subcategoría, descripción, precio, moneda, imagenPrincipal, imagenes y destacado. **Nunca salen** el ID interno, la carpeta, las observaciones ni productos que no estén PUBLICADOS.
 - Las respuestas se guardan en caché 5 minutos y cualquier edición la invalida al instante.
 - **`PRECIO` es el precio de venta público.** No guardes ahí el costo del proveedor.
+
+Para recibir cotizaciones desde la web:
+
+1. En **Configuración del proyecto → Propiedades del script**, agrega `QUOTE_API_TOKEN` con un valor secreto largo y aleatorio.
+2. Ve a **Implementar → Nueva implementación → Aplicación web**.
+3. Selecciona **Ejecutar como: Yo** y **Acceso: Cualquier persona**. Copia la URL terminada en `/exec`.
+4. En el servidor de la web configura `GOOGLE_QUOTE_WEB_APP_URL` con esa URL y `GOOGLE_QUOTE_API_TOKEN` con exactamente el mismo secreto.
+5. Envía una cotización de prueba. Debe crear o actualizar una fila en `CLIENTES`, crear una fila con estado `NUEVA` en `COTIZACIONES` y una fila por producto en `COTIZACION_ITEMS`.
+
+El token solo viaja entre el servidor de la web y Apps Script; no se expone al navegador. Cambiar el código después de la primera publicación exige crear una versión nueva y actualizar la implementación activa.
 
 **IA (preparada, no conectada):** `generarDescripcionIA('XBZ-1024')` devuelve el prompt y los datos de entrada. `validarRespuestaIA_()` rechaza cualquier respuesta con números que no estén en los datos originales, por ejemplo "24 horas" si ese dato no existe. Para conectar Gemini hay que implementar `llamarGemini_()` y poner `IA_CONFIG.HABILITADA = true`.
 

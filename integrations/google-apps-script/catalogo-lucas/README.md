@@ -1,12 +1,12 @@
 # Catálogo Lucas para Google Apps Script
 
-Este directorio conserva los nueve archivos instalables recibidos en `catalogo-lucas.zip`, con correcciones para los códigos reales del catálogo Creer y validaciones defensivas de publicación.
+Este directorio conserva los nueve archivos instalables recibidos en `catalogo-lucas.zip` y agrega `Cotizaciones.gs`, con correcciones para los códigos reales del catálogo Creer, validaciones defensivas de publicación y recepción segura de solicitudes desde la web.
 
 ## Papel dentro de Proyecto Creer
 
-Google Sheets y Drive funcionan como área de carga y mantenimiento del catálogo para Lucas. Supabase continúa siendo la base operativa del SaaS para usuarios, permisos, costos privados, clientes, cotizaciones, suscripciones y auditoría.
+Google Sheets y Drive funcionan como área de carga y mantenimiento del catálogo para Lucas. Durante el laboratorio, la misma hoja también recibe clientes y cotizaciones en pestañas separadas. Supabase continúa preparado para la evolución del SaaS: usuarios, permisos, costos privados, suscripciones y auditoría avanzada.
 
-El endpoint público de Apps Script solo debe entregar productos publicados. La aplicación web podrá sincronizar esa salida hacia Supabase; no se deben guardar costos ni información privada en `PRECIO` o en la API pública.
+El endpoint público de Apps Script solo entrega productos publicados. El receptor de cotizaciones acepta solicitudes únicamente cuando incluyen el token privado configurado en Apps Script. No se deben guardar costos ni información privada en `PRECIO` o en la API pública.
 
 ## Verificación local
 
@@ -24,3 +24,5 @@ Estas pruebas verifican la lógica portable incluida en la entrega. La prueba de
 - Se rechazan fórmulas también en el campo de precio.
 - Publicar exige descripción, en concordancia con la detección de productos incompletos.
 - La API excluye categorías inexistentes o inactivas y productos publicados manualmente con datos incompletos.
+- Las cotizaciones se guardan en `CLIENTES`, `COTIZACIONES` y `COTIZACION_ITEMS`; un correo existente actualiza el cliente en lugar de duplicarlo.
+- El token de recepción vive en Propiedades del script y en el servidor web. Nunca se incluye en el repositorio ni se envía al navegador.

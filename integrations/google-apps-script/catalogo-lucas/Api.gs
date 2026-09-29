@@ -109,6 +109,28 @@ function doGet(e) {
   return ContentService.createTextOutput(JSON.stringify(cuerpo)).setMimeType(ContentService.MimeType.JSON);
 }
 
+/**
+ * Punto de recepción de cotizaciones. El secreto se guarda en Propiedades del
+ * script como QUOTE_API_TOKEN y nunca en una celda ni en el navegador.
+ */
+function doPost(e) {
+  let cuerpo;
+  try {
+    const esperado = PropertiesService.getScriptProperties().getProperty('QUOTE_API_TOKEN');
+    if (!esperado) throw new Error('La recepción de cotizaciones no está configurada.');
+    const entrada = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+    const recibido = texto_(entrada.apiToken);
+    if (!recibido || recibido !== esperado) throw new Error('Solicitud no autorizada.');
+    delete entrada.apiToken;
+    cuerpo = registrarSolicitudWeb_(entrada);
+  } catch (err) {
+    registrarLog_('COTIZACION_WEB_ERROR', '', err.message, 'ERROR');
+    cuerpo = { ok: false, error: 'No se pudo registrar la solicitud.' };
+  }
+  return ContentService.createTextOutput(JSON.stringify(cuerpo))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
 // -----------------------------------------------------------------------------
 // DESCRIPCIONES CON IA (estructura preparada, SIN llamadas a API todavía)
 // -----------------------------------------------------------------------------
