@@ -8,6 +8,7 @@ import { hasSupabaseConfig } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 
 interface QuotePayload {
+  requestKey?: string;
   customer?: {
     name?: string;
     company?: string;
@@ -35,8 +36,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Solicitação inválida." }, { status: 400 });
   }
 
-  const { customer, items, notes } = payload;
+  const { customer, items, notes, requestKey } = payload;
   if (
+    !requestKey ||
+    !/^[A-Za-z0-9-]{16,100}$/.test(requestKey) ||
     !customer?.name?.trim() ||
     !customer.company?.trim() ||
     !customer.email?.trim() ||
@@ -57,7 +60,7 @@ export async function POST(request: Request) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ ...payload, apiToken: config.token }),
         cache: "no-store",
-        signal: AbortSignal.timeout(10000),
+        signal: AbortSignal.timeout(30000),
       });
       const result = (await response.json()) as {
         ok?: boolean;

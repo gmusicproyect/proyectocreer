@@ -29,6 +29,7 @@ interface SentQuote {
 
 export function QuoteBuilder({ remote = false }: { remote?: boolean }) {
   const cart = useDemoCart();
+  const [requestKey] = useState(() => crypto.randomUUID());
   const [customer, setCustomer] = useState(emptyCustomer);
   const [notes, setNotes] = useState("");
   const [sent, setSent] = useState<SentQuote | null>(null);
@@ -55,7 +56,12 @@ export function QuoteBuilder({ remote = false }: { remote?: boolean }) {
       const response = await fetch("/api/quotes", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ customer, notes: notes.trim(), items: cart }),
+        body: JSON.stringify({
+          requestKey,
+          customer,
+          notes: notes.trim(),
+          items: cart,
+        }),
       });
       const result = (await response.json()) as { id?: string; error?: string };
       if (!response.ok || !result.id) {

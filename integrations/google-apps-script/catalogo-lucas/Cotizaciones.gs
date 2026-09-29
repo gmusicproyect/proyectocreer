@@ -5,6 +5,7 @@
 
 function normalizarSolicitudWeb_(entrada) {
   entrada = entrada || {};
+  const claveSolicitud = texto_(entrada.requestKey).slice(0, 100);
   const cliente = entrada.customer || {};
   const nombre = texto_(cliente.name).slice(0, 150);
   const empresa = texto_(cliente.company).slice(0, 150);
@@ -13,6 +14,9 @@ function normalizarSolicitudWeb_(entrada) {
   const notas = texto_(entrada.notes).slice(0, 1000);
   const items = Array.isArray(entrada.items) ? entrada.items : [];
 
+  if (!/^[A-Za-z0-9-]{16,100}$/.test(claveSolicitud)) {
+    throw new Error('Falta una clave de solicitud válida.');
+  }
   if (!nombre || !empresa || !email || !telefono) {
     throw new Error('Faltan los datos obligatorios del cliente.');
   }
@@ -40,6 +44,7 @@ function normalizarSolicitudWeb_(entrada) {
   });
 
   return {
+    requestKey: claveSolicitud,
     customer: {
       name: nombre,
       company: empresa,
@@ -82,6 +87,20 @@ function registrarSolicitudWeb_(entrada) {
       }
     });
 
+    const shCotizaciones = hoja_(SHEETS.COTIZACIONES);
+    const mapCotizaciones = mapaColumnas_(shCotizaciones, HEADERS.COTIZACIONES);
+    const tablaCotizaciones = filasTabla_(shCotizaciones, mapCotizaciones);
+    const cotizacionExistente = tablaCotizaciones.filas.find(function (fila) {
+      return texto_(fila[mapCotizaciones.CLAVE_SOLICITUD]) === solicitud.requestKey;
+    });
+    if (cotizacionExistente) {
+      return {
+        ok: true,
+        id: texto_(cotizacionExistente[mapCotizaciones.REFERENCIA]),
+        duplicate: true
+      };
+    }
+
     const shClientes = hoja_(SHEETS.CLIENTES);
     const mapClientes = mapaColumnas_(shClientes, HEADERS.CLIENTES);
     const tablaClientes = filasTabla_(shClientes, mapClientes);
@@ -117,9 +136,6 @@ function registrarSolicitudWeb_(entrada) {
       shClientes.appendRow(filaCliente);
     }
 
-    const shCotizaciones = hoja_(SHEETS.COTIZACIONES);
-    const mapCotizaciones = mapaColumnas_(shCotizaciones, HEADERS.COTIZACIONES);
-    const tablaCotizaciones = filasTabla_(shCotizaciones, mapCotizaciones);
     const cotizacionId = siguienteIdTabla_(tablaCotizaciones.filas, mapCotizaciones.ID);
     const referencia = 'CR-' +
       Utilities.formatDate(ahora, Session.getScriptTimeZone(), 'yyyyMMdd') +
@@ -131,6 +147,7 @@ function registrarSolicitudWeb_(entrada) {
     filaCotizacion[mapCotizaciones.ESTADO] = 'NUEVA';
     filaCotizacion[mapCotizaciones.NOTAS] = celdaSegura_(solicitud.notes);
     filaCotizacion[mapCotizaciones.FECHA_CREACION] = ahora;
+    filaCotizacion[mapCotizaciones.CLAVE_SOLICITUD] = solicitud.requestKey;
     shCotizaciones.appendRow(filaCotizacion);
 
     const shItems = hoja_(SHEETS.COTIZACION_ITEMS);

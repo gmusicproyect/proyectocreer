@@ -53,6 +53,7 @@ function inicializarSistema() {
     return prepararHoja_(ss, SHEETS[nombre], HEADERS[nombre]);
   });
   sembrarConfiguracion_();
+  formatearHojaCotizacionItems_();
   formatearHojaProductos_();
   formatearHojaCategorias_();
   eliminarHojaVaciaPorDefecto_(ss);
@@ -156,6 +157,43 @@ function formatearHojaCategorias_() {
   if (ultima > 1) {
     sh.getRange(2, map.ACTIVA + 1, ultima - 1, 1).setDataValidation(SpreadsheetApp.newDataValidation().requireCheckbox().build());
   }
+}
+
+/** Conserva códigos con ceros iniciales y repara filas antiguas por nombre. */
+function formatearHojaCotizacionItems_() {
+  const sh = hoja_(SHEETS.COTIZACION_ITEMS);
+  const map = mapaColumnas_(sh, HEADERS.COTIZACION_ITEMS);
+  sh.getRange(2, map.CODIGO + 1, Math.max(sh.getMaxRows() - 1, 1), 1)
+    .setNumberFormat('@');
+
+  const ultima = sh.getLastRow();
+  if (ultima <= 1) return;
+  const productos = leerProductos_();
+  const codigos = {};
+  const porNombre = {};
+  productos.forEach(function (producto) {
+    codigos[producto.codigo] = true;
+    const clave = claveBusqueda_(producto.nombre);
+    if (!porNombre[clave]) porNombre[clave] = [];
+    porNombre[clave].push(producto.codigo);
+  });
+
+  const rango = sh.getRange(2, 1, ultima - 1, sh.getLastColumn());
+  const filas = rango.getValues();
+  let cambio = false;
+  filas.forEach(function (fila) {
+    const codigo = normalizarCodigo_(fila[map.CODIGO]);
+    if (codigos[codigo]) {
+      fila[map.CODIGO] = codigo;
+      return;
+    }
+    const coincidencias = porNombre[claveBusqueda_(fila[map.NOMBRE])] || [];
+    if (coincidencias.length === 1) {
+      fila[map.CODIGO] = coincidencias[0];
+      cambio = true;
+    }
+  });
+  if (cambio) rango.setValues(filas);
 }
 
 /** Borra "Hoja 1"/"Sheet1" solo si está completamente vacía. */

@@ -76,6 +76,7 @@ test("public API returns only complete products from active categories", () => {
 
 test("validates quote requests without exposing or accepting malformed data", () => {
   const request = JSON.stringify({
+    requestKey: "12345678-1234-1234-1234-123456789abc",
     customer: {
       name: "João",
       company: "Empresa",
@@ -97,13 +98,14 @@ test("validates quote requests without exposing or accepting malformed data", ()
     evaluate(`JSON.stringify(normalizarSolicitudWeb_(${request}))`),
   );
   assert.equal(result.customer.email, "joao@example.com");
+  assert.equal(result.requestKey, "12345678-1234-1234-1234-123456789abc");
   assert.equal(result.items[0].codigo, "00001");
   assert.equal(result.items[0].cantidad, 100);
   assert.throws(
     () =>
       evaluate(
-        "normalizarSolicitudWeb_({customer:{},items:[]})",
+        "normalizarSolicitudWeb_({requestKey:'invalid',customer:{},items:[]})",
       ),
-    /Faltan los datos obligatorios/,
+    /clave de solicitud válida/,
   );
 });

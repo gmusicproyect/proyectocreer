@@ -22,3 +22,7 @@ configurados, /api/quotes registra el cliente y la solicitud en CLIENTES,
 COTIZACIONES y COTIZACION_ITEMS. Supabase sigue disponible como segunda opción.
 Sin ninguna persistencia configurada, el laboratorio conserva las solicitudes
 en el navegador.
+
+Cada envío lleva una clave estable generada por el navegador. Si Google termina
+de guardar después de que la web agota su espera y el usuario reintenta, Apps
+Script devuelve la referencia ya creada en vez de duplicar la cotización.

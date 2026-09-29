@@ -70,6 +70,7 @@ Ve a **CATÁLOGO LUCAS → ⚙️ Sistema → Inicializar / reparar hojas**. Est
 - carga los valores por defecto en CONFIGURACION (`MONEDA = BRL`, `VERSION_SISTEMA`, etc.);
 - agrega la lista desplegable de ESTADO, la casilla DESTACADO, la lista de CATEGORIA y los formatos de precio y fecha;
 - marca **en rojo** los códigos duplicados;
+- conserva como texto los códigos de producto, también dentro de los ítems de cotización;
 - borra la "Hoja 1" vacía.
 
 Puedes ejecutarlo tantas veces como quieras. Si falta alguna columna, la agrega al final sin tocar tus datos.
