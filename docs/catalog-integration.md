@@ -35,6 +35,14 @@ correo ya está en CLIENTES, solo se completan campos vacíos, y lo que la
 persona escribió queda copiado en la propia cotización (columnas CONTACTO_*).
 Así nadie puede cambiar el teléfono de un cliente conociendo solo su correo.
 
+El panel administrativo consulta `admin_datos` desde un componente de servidor,
+después de validar la sesión administrativa. El token permanece en el servidor
+y Apps Script no guarda en caché la respuesta privada. La web conserva una
+copia en memoria durante 15 segundos para que la navegación del panel sea ágil.
+Productos, categorías, clientes y
+cotizaciones se muestran desde la planilla; el navegador nunca recibe IDs de
+Drive, la configuración de Apps Script ni el token de conexión.
+
 ## Checklist de despliegue
 
 1. Pegar en Apps Script los archivos actualizados de

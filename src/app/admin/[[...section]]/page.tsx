@@ -3,6 +3,13 @@ import { notFound, redirect } from "next/navigation";
 import { Brand } from "@/components/brand";
 import { EmptyState } from "@/components/empty-state";
 import { modules } from "@/modules/admin/navigation";
+import { getSheetsAdminSnapshot } from "@/modules/admin/sheets-data";
+import {
+  SheetsCategoriesPanel,
+  SheetsCustomersPanel,
+  SheetsProductsPanel,
+  SheetsQuotesPanel,
+} from "@/modules/admin/sheets-panels";
 import { logout } from "@/modules/auth/actions";
 import { getAdminAccess } from "@/modules/auth/access";
 import { demoProducts } from "@/modules/catalog/demo-products";
@@ -16,6 +23,7 @@ export default async function Admin({
 }) {
   const access = await getAdminAccess();
   if (!access) redirect("/acesso?erro=acesso");
+  const sheets = await getSheetsAdminSnapshot();
   const { section = [] } = await params;
   const current = modules.find((m) => m.slug === section.join("/"));
   if (!current) notFound();
@@ -63,8 +71,9 @@ export default async function Admin({
         </header>
         <main id="conteudo" className="admin-main">
           <div className="notice compact">
-            Laboratório de apresentação · produtos demonstrativos, sem preços
-            comerciais definidos.
+            {sheets
+              ? "Dados sincronizados da planilha privada de Gmusic."
+              : "Laboratório de apresentação · a conexão administrativa com a planilha está indisponível."}
           </div>
           <p className="eyebrow">
             CREER / {current.name.toLocaleUpperCase("pt-BR")}
@@ -77,18 +86,18 @@ export default async function Admin({
                 {[
                   {
                     label: "Produtos na coleção piloto",
-                    value: demoProducts.length,
+                    value: sheets?.stats.total ?? demoProducts.length,
                     note: "Linha ecológica",
                   },
                   {
                     label: "Orçamentos recebidos",
-                    value: 0,
-                    note: "Ainda sem registros",
+                    value: sheets?.quotes.length ?? 0,
+                    note: sheets ? "Na planilha privada" : "Ainda sem registros",
                   },
                   {
                     label: "Clientes cadastrados",
-                    value: 0,
-                    note: "Ainda sem registros",
+                    value: sheets?.customers.length ?? 0,
+                    note: sheets ? "Na planilha privada" : "Ainda sem registros",
                   },
                 ].map((stat) => (
                   <div key={stat.label}>
@@ -103,7 +112,9 @@ export default async function Admin({
                   <h2>Orçamentos recentes</h2>
                   <Link href="/admin/orcamentos">Ver todos ↗</Link>
                 </div>
-                {access.mode === "supabase" ? (
+                {sheets ? (
+                  <SheetsQuotesPanel quotes={sheets.quotes} compact />
+                ) : access.mode === "supabase" ? (
                   <LiveQuotesPanel tenantId={access.tenantId} compact />
                 ) : (
                   <DemoQuotesPanel compact />
@@ -123,32 +134,40 @@ export default async function Admin({
                 <h2>{current.name}</h2>
                 <span className="badge">
                   {current.slug === "produtos"
-                    ? `${demoProducts.length} produtos piloto`
+                    ? `${sheets?.products.length ?? demoProducts.length} produtos`
                     : current.slug === "orcamentos"
-                      ? "Laboratório ativo"
-                      : "Em preparação"}
+                      ? `${sheets?.quotes.length ?? 0} solicitações`
+                      : current.slug === "clientes"
+                        ? `${sheets?.customers.length ?? 0} clientes`
+                        : current.slug === "categorias"
+                          ? `${sheets?.categories.length ?? 0} categorias`
+                          : "Em preparação"}
                 </span>
               </div>
               {current.slug === "produtos" ? (
-                <div className="admin-product-list">
-                  {demoProducts.map((product) => (
-                    <div className="admin-product-row" key={product.code}>
-                      <div>
-                        <strong>{product.name}</strong>
-                        <span>
-                          Cód. {product.code} · {product.category}
-                        </span>
+                sheets ? (
+                  <SheetsProductsPanel products={sheets.products} />
+                ) : (
+                  <div className="admin-product-list">
+                    {demoProducts.map((product) => (
+                      <div className="admin-product-row" key={product.code}>
+                        <div>
+                          <strong>{product.name}</strong>
+                          <span>Cód. {product.code} · {product.category}</span>
+                        </div>
+                        <span className="price-pending">Preço a definir</span>
                       </div>
-                      <span className="price-pending">Preço a definir</span>
-                    </div>
-                  ))}
-                  <div className="module-note">
-                    Lucas poderá definir custo interno e preço de venda quando o
-                    módulo de dados estiver conectado.
+                    ))}
                   </div>
-                </div>
+                )
+              ) : current.slug === "categorias" && sheets ? (
+                <SheetsCategoriesPanel categories={sheets.categories} />
+              ) : current.slug === "clientes" && sheets ? (
+                <SheetsCustomersPanel customers={sheets.customers} />
               ) : current.slug === "orcamentos" ? (
-                access.mode === "supabase" ? (
+                sheets ? (
+                  <SheetsQuotesPanel quotes={sheets.quotes} />
+                ) : access.mode === "supabase" ? (
                   <LiveQuotesPanel tenantId={access.tenantId} />
                 ) : (
                   <DemoQuotesPanel />

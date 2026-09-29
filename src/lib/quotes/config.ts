@@ -1,4 +1,4 @@
-import { hasSupabaseConfig } from "@/lib/supabase/config";
+import { hasSupabaseConfig } from "../supabase/config.ts";
 
 export function hasGoogleSheetsQuoteConfig() {
   return Boolean(
