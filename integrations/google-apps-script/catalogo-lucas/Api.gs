@@ -166,9 +166,25 @@ function getDatosAdminWeb_() {
     mapaColumnas_(itemsSh, HEADERS.COTIZACION_ITEMS)
   );
 
+  const correos = {};
+  clientesTabla.filas.forEach(function (fila) {
+    const email = texto_(fila[clientesTabla.map.EMAIL]).toLowerCase();
+    if (email) correos[email] = (correos[email] || 0) + 1;
+  });
+  const cotizacionesPorCliente = {};
+  cotizacionesTabla.filas.forEach(function (fila) {
+    const clienteId = texto_(fila[cotizacionesTabla.map.CLIENTE_ID]);
+    if (clienteId) cotizacionesPorCliente[clienteId] = (cotizacionesPorCliente[clienteId] || 0) + 1;
+  });
+
   const clientes = clientesTabla.filas.map(function (fila) {
+    const email = texto_(fila[clientesTabla.map.EMAIL]).toLowerCase();
+    const id = texto_(fila[clientesTabla.map.ID]);
     return {
-      id: texto_(fila[clientesTabla.map.ID]),
+      id: id,
+      version: versionFila_(fila),
+      duplicado: Boolean(email) && correos[email] > 1,
+      cotizaciones: cotizacionesPorCliente[id] || 0,
       nombre: texto_(fila[clientesTabla.map.NOMBRE]),
       empresa: texto_(fila[clientesTabla.map.EMPRESA]),
       email: texto_(fila[clientesTabla.map.EMAIL]),
@@ -204,10 +220,14 @@ function getDatosAdminWeb_() {
     const cliente = clientesPorId[texto_(fila[map.CLIENTE_ID])] || {};
     return {
       id: id,
+      version: versionFila_(fila),
       referencia: texto_(fila[map.REFERENCIA]),
       estado: texto_(fila[map.ESTADO]).toUpperCase(),
       notas: texto_(fila[map.NOTAS]),
+      notasInternas: valorColumnaAdmin_(fila, map, 'NOTAS_INTERNAS'),
+      clienteId: texto_(fila[map.CLIENTE_ID]),
       fechaCreacion: fechaAdminWeb_(fila[map.FECHA_CREACION]),
+      fechaActualizacion: map.FECHA_ACTUALIZACION === undefined ? '' : fechaAdminWeb_(fila[map.FECHA_ACTUALIZACION]),
       contacto: {
         nombre: valorColumnaAdmin_(fila, map, 'CONTACTO_NOMBRE') || cliente.nombre || '',
         empresa: valorColumnaAdmin_(fila, map, 'CONTACTO_EMPRESA') || cliente.empresa || '',
@@ -221,17 +241,8 @@ function getDatosAdminWeb_() {
 
   return {
     generado: new Date().toISOString(),
-    productos: productos.map(productoAdminWeb_),
-    categorias: categorias.map(function (c) {
-      return {
-        id: c.id,
-        nombre: c.nombre,
-        slug: c.slug,
-        descripcion: c.descripcion,
-        activa: c.activa,
-        orden: c.orden
-      };
-    }),
+    productos: productos.map(productoAdminCompleto_),
+    categorias: categoriasConVersion_(categorias, productos),
     clientes: clientes,
     cotizaciones: cotizaciones,
     stats: calcularEstadisticas_(productos, categorias)
@@ -294,6 +305,23 @@ function verificarTokenEscritura_(recibido) {
   }
 }
 
+/** Categorías con versión (para detectar conflictos) y cantidad de productos. */
+function categoriasConVersion_(categorias, productos) {
+  const porCategoria = {};
+  productos.forEach(function (p) {
+    const clave = claveBusqueda_(p.categoria);
+    if (clave) porCategoria[clave] = (porCategoria[clave] || 0) + 1;
+  });
+  const c = cargarCategorias_();
+  return categorias.map(function (cat) {
+    const fila = (c.filas || [])[cat.fila - 2];
+    return fila ? categoriaAdminWeb_(fila, c.map, porCategoria) : {
+      id: cat.id, nombre: cat.nombre, slug: cat.slug, descripcion: cat.descripcion,
+      activa: cat.activa, orden: cat.orden, productos: porCategoria[claveBusqueda_(cat.nombre)] || 0, version: ''
+    };
+  });
+}
+
 function fechaAdminWeb_(valor) {
   return valor instanceof Date && !isNaN(valor.getTime()) ? valor.toISOString() : texto_(valor);
 }
@@ -322,8 +350,8 @@ function doPost(e) {
   try {
     const entrada = JSON.parse((e && e.postData && e.postData.contents) || '{}');
     accion = texto_(entrada.accion) || 'cotizacion';
-    if (accion === 'admin_actualizar_producto') {
-      // Escritura: token distinto al de lectura/cotizaciones.
+    if (esAccionAdmin_(accion)) {
+      // Escrituras y costos: token de administración, distinto al de lectura/cotizaciones.
       verificarTokenEscritura_(entrada.apiToken);
     } else {
       verificarTokenWeb_(entrada.apiToken);
@@ -337,18 +365,17 @@ function doPost(e) {
       cuerpo = registrarSolicitudWeb_(entrada);
     } else if (accion === 'admin_datos') {
       cuerpo = { ok: true, datos: getDatosAdminWeb_() };
-    } else if (accion === 'admin_actualizar_producto') {
-      cuerpo = actualizarProductoAdminWeb_(entrada);
+    } else if (esAccionAdmin_(accion)) {
+      cuerpo = ejecutarAccionAdmin_(accion, entrada);
     } else {
       throw new Error('Acción no válida: ' + accion);
     }
   } catch (err) {
-    const etiquetas = {
-      catalogo: 'CATALOGO_WEB_ERROR', admin_datos: 'ADMIN_WEB_ERROR',
-      admin_actualizar_producto: 'ADMIN_EDICION_ERROR'
-    };
-    registrarLog_(etiquetas[accion] || 'COTIZACION_WEB_ERROR', '', err.message, 'ERROR');
-    if (accion === 'admin_actualizar_producto') {
+    const etiquetas = { catalogo: 'CATALOGO_WEB_ERROR', admin_datos: 'ADMIN_WEB_ERROR' };
+    const esAdmin = esAccionAdmin_(accion);
+    registrarLog_(esAdmin ? 'ADMIN_EDICION_ERROR' : etiquetas[accion] || 'COTIZACION_WEB_ERROR',
+      '', '[' + accion + '] ' + err.message, 'ERROR');
+    if (esAdmin) {
       // El panel es privado: puede mostrar el motivo (validación o conflicto),
       // salvo en fallos de autorización/configuración.
       const codigo = err.codigo || 'VALIDACION';

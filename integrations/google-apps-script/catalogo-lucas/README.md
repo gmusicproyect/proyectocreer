@@ -6,7 +6,9 @@ Este directorio conserva los nueve archivos instalables recibidos en `catalogo-l
 
 Google Sheets y Drive funcionan como área de carga y mantenimiento del catálogo para Lucas. Durante el laboratorio, la misma hoja también recibe clientes y cotizaciones en pestañas separadas. Supabase continúa preparado para la evolución del SaaS: usuarios, permisos, costos privados, suscripciones y auditoría avanzada.
 
-El endpoint público de Apps Script solo entrega productos publicados. El receptor de cotizaciones acepta solicitudes únicamente cuando incluyen el token privado configurado en Apps Script. No se deben guardar costos ni información privada en `PRECIO` o en la API pública.
+El endpoint público de Apps Script solo entrega productos publicados. El receptor de cotizaciones acepta solicitudes únicamente cuando incluyen el token privado configurado en Apps Script. `PRECIO` es el precio de venta: los costos internos viven en la pestaña privada `COSTOS` (ver ADR 002) y nunca pasan por la API pública.
+
+`AdminWeb.gs` recibe las escrituras del panel web con un token de administración propio (`ADMIN_WRITE_TOKEN`). Activación y reglas: sección 11 de `INSTALACION.md`.
 
 ## Verificación local
 
@@ -15,6 +17,8 @@ Desde la raíz de `proyectocreer`:
 ```bash
 npm run test:catalog-importer
 ```
+
+`tests/planilha-simulada.mjs` ejecuta los `.gs` reales sobre una planilla en memoria; lo usan `tests/admin-web.test.mjs` y el servidor local `dev/servidor-simulado.mjs`.
 
 Estas pruebas verifican la lógica portable incluida en la entrega. La prueba definitiva de permisos, Drive, triggers y hojas requiere instalar el proyecto en una cuenta real de Google siguiendo `INSTALACION.md`.
 

@@ -9,8 +9,14 @@ const stateLabels: Record<string, string> = {
   BORRADOR: "Rascunho",
   PENDIENTE: "Pendente",
   PUBLICADO: "Publicado",
-  OCULTO: "Oculto",
+  OCULTO: "Inativo",
 };
+
+/** Pendente, Publicado e Inativo; "Rascunho" só se o produto já estiver assim. */
+function optionsFor(current: string) {
+  const base = ["PENDIENTE", "PUBLICADO", "OCULTO"];
+  return current === "BORRADOR" ? ["BORRADOR", ...base] : base;
+}
 
 function normalizeState(value: string) {
   return (EDITABLE_STATES as readonly string[]).includes(value) ? value : "PENDIENTE";
@@ -77,7 +83,7 @@ export function ProductQuickEdit({
       <label>
         <span>Estado</span>
         <select name="state" value={status} onChange={(event) => setStatus(event.target.value)}>
-          {EDITABLE_STATES.map((item) => (
+          {optionsFor(status).map((item) => (
             <option key={item} value={item}>
               {stateLabels[item]}
             </option>

@@ -6,7 +6,7 @@ import vm from "node:vm";
 const root = new URL("../", import.meta.url);
 const context = vm.createContext({ console });
 
-for (const file of ["Config.gs", "Productos.gs", "DriveImporter.gs", "Cotizaciones.gs", "Api.gs"]) {
+for (const file of ["Config.gs", "Productos.gs", "DriveImporter.gs", "Cotizaciones.gs", "Api.gs", "AdminWeb.gs"]) {
   vm.runInContext(readFileSync(new URL(file, root), "utf8"), context, {
     filename: file,
   });
@@ -159,6 +159,12 @@ test("private admin endpoint joins products, customers and quote items", () => {
         }
       };
     }
+    // En Google, Utilities siempre existe; aquí basta con un resumen simple.
+    Utilities = {
+      DigestAlgorithm: { MD5: 'MD5' }, Charset: { UTF_8: 'UTF_8' },
+      computeDigest: function (a, texto) { return String(texto).split('').map(function (c) { return c.charCodeAt(0) % 128; }); },
+      base64EncodeWebSafe: function (bytes) { return bytes.join('.'); }
+    };
     var adminSheets_ = {};
     adminSheets_[SHEETS.CLIENTES] = makeSheet_(HEADERS.CLIENTES, [[
       '1', 'Lucas', 'Empresa', 'lucas@example.com', '01199990000', '2026-09-29', '2026-09-29'

@@ -82,6 +82,8 @@ function inicializarSistema() {
   formatearHojaCotizacionItems_();
   formatearHojaProductos_();
   formatearHojaCategorias_();
+  formatearHojaCotizaciones_();
+  formatearHojaCostos_();
   eliminarHojaVaciaPorDefecto_(ss);
   registrarLog_('INICIALIZACION', '', informe.join(' | '), 'OK');
   mostrarAlerta_('Sistema inicializado (v' + APP.VERSION + ')', informe.join('\n'));
@@ -183,6 +185,31 @@ function formatearHojaCategorias_() {
   if (ultima > 1) {
     sh.getRange(2, map.ACTIVA + 1, ultima - 1, 1).setDataValidation(SpreadsheetApp.newDataValidation().requireCheckbox().build());
   }
+}
+
+/** Estado de seguimiento como lista desplegable (permite valores antiguos) y fecha legible. */
+function formatearHojaCotizaciones_() {
+  const sh = hoja_(SHEETS.COTIZACIONES);
+  const map = mapaColumnas_(sh, ['ESTADO', 'FECHA_ACTUALIZACION']);
+  const filas = Math.max(sh.getMaxRows() - 1, 1);
+  sh.getRange(2, map.ESTADO + 1, filas, 1).setDataValidation(
+    SpreadsheetApp.newDataValidation().requireValueInList(ESTADOS_COTIZACION.slice(), true).setAllowInvalid(true).build());
+  sh.getRange(2, map.FECHA_ACTUALIZACION + 1, filas, 1).setNumberFormat('yyyy-mm-dd hh:mm');
+}
+
+/**
+ * COSTOS es privada: el catálogo público nunca la lee. Quien tenga acceso a la
+ * planilla sí la ve, por eso la planilla solo se comparte con personas que
+ * pueden conocer los costos.
+ */
+function formatearHojaCostos_() {
+  const sh = hoja_(SHEETS.COSTOS);
+  const map = mapaColumnas_(sh, HEADERS.COSTOS);
+  const filas = Math.max(sh.getMaxRows() - 1, 1);
+  sh.getRange(2, map.CODIGO + 1, filas, 1).setNumberFormat('@');
+  sh.getRange(2, map.COSTO + 1, filas, 1).setNumberFormat('#,##0.00');
+  sh.getRange(2, map.FECHA_ACTUALIZACION + 1, filas, 1).setNumberFormat('yyyy-mm-dd hh:mm');
+  sh.setTabColor('#991b1b');
 }
 
 /** Conserva códigos con ceros iniciales y repara filas antiguas por nombre. */

@@ -19,7 +19,7 @@
 
 const APP = Object.freeze({
   NOMBRE_MENU: 'CATÁLOGO LUCAS',
-  VERSION: '1.0.0',
+  VERSION: '1.1.0',
   MONEDA_DEFECTO: 'BRL'
 });
 
@@ -32,7 +32,8 @@ const SHEETS = Object.freeze({
   VALIDACION: 'VALIDACION',
   CLIENTES: 'CLIENTES',
   COTIZACIONES: 'COTIZACIONES',
-  COTIZACION_ITEMS: 'COTIZACION_ITEMS'
+  COTIZACION_ITEMS: 'COTIZACION_ITEMS',
+  COSTOS: 'COSTOS'
 });
 
 /** Encabezados de cada hoja. El sistema lee por NOMBRE de columna, no por posición. */
@@ -58,12 +59,15 @@ const HEADERS = Object.freeze({
   COTIZACIONES: [
     'ID', 'REFERENCIA', 'CLIENTE_ID', 'ESTADO', 'NOTAS', 'FECHA_CREACION',
     'CLAVE_SOLICITUD', 'CONTACTO_NOMBRE', 'CONTACTO_EMPRESA', 'CONTACTO_EMAIL',
-    'CONTACTO_TELEFONO'
+    'CONTACTO_TELEFONO', 'NOTAS_INTERNAS', 'FECHA_ACTUALIZACION'
   ],
   COTIZACION_ITEMS: [
     'COTIZACION_ID', 'CODIGO', 'NOMBRE', 'CANTIDAD', 'ACABAMENTO',
     'PERSONALIZACION', 'PRECIO_REFERENCIA', 'MONEDA'
-  ]
+  ],
+  // Costos internos: solo el panel (token de administración) los lee.
+  // Nunca pasan por el catálogo público ni por admin_datos.
+  COSTOS: ['CODIGO', 'COSTO', 'MONEDA', 'PROVEEDOR', 'NOTAS', 'FECHA_ACTUALIZACION']
 });
 
 /** Columnas sin las cuales no se puede registrar una cotización. */
@@ -72,6 +76,9 @@ const COTIZACIONES_REQUERIDAS = Object.freeze([
 ]);
 
 const ESTADOS = Object.freeze(['BORRADOR', 'PUBLICADO', 'OCULTO', 'PENDIENTE']);
+
+/** Seguimiento comercial de una cotización (el panel muestra los nombres en portugués). */
+const ESTADOS_COTIZACION = Object.freeze(['NUEVA', 'EN_ANALISIS', 'COTIZADA', 'APROBADA', 'RECHAZADA']);
 
 /** Columnas de imagen en orden: principal, secundaria 1 (_1), secundaria 2 (_2). */
 const IMAGEN_SLOTS = Object.freeze(['IMAGEN_PRINCIPAL', 'IMAGEN_2', 'IMAGEN_3']);
@@ -98,11 +105,13 @@ const LIMITES = Object.freeze({
   MAX_ERRORES_MUESTRA: 25,
   LARGO: { NOMBRE: 150, CATEGORIA: 80, SUBCATEGORIA: 80, DESCRIPCION: 5000, OBSERVACIONES: 1000 },
   PRECIO_MAX: 100000000,
+  IMAGEN_MAX_BYTES: 3 * 1024 * 1024,  // imagen subida desde el panel web
   CACHE_API_SEG: 300
 });
 
 const CLAVES_CONFIG = Object.freeze([
-  'NOMBRE_NEGOCIO', 'MONEDA', 'DRIVE_PRINCIPAL_ID', 'ULTIMA_IMPORTACION', 'VERSION_SISTEMA'
+  'NOMBRE_NEGOCIO', 'MONEDA', 'DRIVE_PRINCIPAL_ID', 'ULTIMA_IMPORTACION', 'VERSION_SISTEMA',
+  'DRIVE_UPLOAD_ID'
 ]);
 
 function valoresConfigPorDefecto_() {
@@ -111,7 +120,10 @@ function valoresConfigPorDefecto_() {
     MONEDA: APP.MONEDA_DEFECTO,
     DRIVE_PRINCIPAL_ID: '',
     ULTIMA_IMPORTACION: '',
-    VERSION_SISTEMA: APP.VERSION
+    VERSION_SISTEMA: APP.VERSION,
+    // Carpeta pública donde el panel web guarda imágenes nuevas (solo imágenes).
+    // Vacío = se usa DRIVE_PRINCIPAL_ID.
+    DRIVE_UPLOAD_ID: ''
   };
 }
 

@@ -54,7 +54,7 @@ Drive, la configuración de Apps Script ni el token de conexión.
 4. Verificar que la web muestra el catálogo real.
 5. Recién entonces, en la planilla: **Compartir → Acceso general → Restringido**.
 
-## Edición desde el panel (precio y estado)
+## Edición desde el panel
 
 - El panel envía `{ accion: "admin_actualizar_producto" }` a Apps Script con un
   **token de escritura propio** (`ADMIN_WRITE_TOKEN` en Propiedades del script y
@@ -75,3 +75,29 @@ Activación:
    script crear `ADMIN_WRITE_TOKEN` (valor largo y aleatorio, distinto de
    `QUOTE_API_TOKEN`); publicar **nueva versión** de la implementación.
 2. Servidor web: `GOOGLE_ADMIN_WRITE_TOKEN` con el mismo valor.
+
+
+### Operaciones disponibles (v1.1.0)
+
+| Pantalla | Qué hace | Acción de Apps Script | Permiso |
+|---|---|---|---|
+| Produtos (lista) | Precio y estado rápidos | `admin_actualizar_producto` | `catalog:write` |
+| Produtos → Novo / Editar ficha | Todos los datos, imágenes por link de Drive | `admin_guardar_producto` | `catalog:write` |
+| Produtos → Enviar imagens | Sube JPG/PNG/WEBP ≤ 3 MB a la carpeta pública y la asocia | `admin_subir_imagen` | `catalog:write` |
+| Produtos → Custo interno | Costo, proveedor y margen | `admin_costos`, `admin_guardar_costo` | `costs:read` / `costs:write` |
+| Categorias | Crear, renombrar (en cascada), ordenar, activar | `admin_guardar_categoria` | `catalog:write` |
+| Clientes | Crear y editar sin duplicar correos | `admin_guardar_cliente` | `customers:write` |
+| Orçamentos | Situación y notas internas | `admin_actualizar_cotizacion` | `quotations:write` |
+| Equipe e permissões | Matriz de papéis (solo lectura) | — | — |
+
+Todas usan el token de administración. Las respuestas de Apps Script en español se traducen al portugués en el panel. Detalles de activación y reglas: sección 11 de `integrations/google-apps-script/catalogo-lucas/INSTALACION.md`. Decisión de arquitectura: ADR 002 en `docs/architecture.md`.
+
+**Prueba local sin la planilla real:**
+
+```sh
+node integrations/google-apps-script/catalogo-lucas/dev/servidor-simulado.mjs
+CREER_ADMIN_PREVIEW=true GOOGLE_QUOTE_WEB_APP_URL=http://127.0.0.1:8787/exec \
+  GOOGLE_QUOTE_API_TOKEN=read GOOGLE_ADMIN_WRITE_TOKEN=write npm run dev
+```
+
+Abrir `http://localhost:3000/admin/produtos` (con `localhost`, no `127.0.0.1`: el servidor de desarrollo bloquea sus recursos para otros orígenes).
