@@ -94,6 +94,9 @@ export interface SheetsAdminSnapshot {
 }
 
 let recentSnapshot: { value: SheetsAdminSnapshot; expiresAt: number } | null = null;
+let pendingSnapshot: Promise<SheetsAdminSnapshot | null> | null = null;
+
+const SNAPSHOT_TTL_MS = 60_000;
 
 /** Tras una edición, la próxima lectura va directo a la planilla. */
 export function clearAdminSnapshotCache() {
@@ -247,9 +250,7 @@ export function adminSnapshotFromApi(payload: unknown): SheetsAdminSnapshot {
   };
 }
 
-export async function getSheetsAdminSnapshot(): Promise<SheetsAdminSnapshot | null> {
-  if (!hasGoogleSheetsQuoteConfig()) return null;
-  if (recentSnapshot && recentSnapshot.expiresAt > Date.now()) return recentSnapshot.value;
+async function requestAdminSnapshot(timeoutMs: number) {
   try {
     const config = getGoogleSheetsQuoteConfig();
     const response = await fetch(config.url, {
@@ -257,15 +258,36 @@ export async function getSheetsAdminSnapshot(): Promise<SheetsAdminSnapshot | nu
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ accion: "admin_datos", apiToken: config.token }),
       cache: "no-store",
-      signal: AbortSignal.timeout(45000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if (!response.ok) throw new Error(`Apps Script respondeu ${response.status}.`);
-    const snapshot = adminSnapshotFromApi(await response.json());
-    recentSnapshot = { value: snapshot, expiresAt: Date.now() + 15000 };
-    return snapshot;
+    return adminSnapshotFromApi(await response.json());
   } catch {
     return null;
   }
+}
+
+async function refreshAdminSnapshot() {
+  // O primeiro acesso pode acordar o Apps Script. Uma segunda tentativa curta
+  // aproveita a instância já aquecida sem deixar o painel preso indefinidamente.
+  const snapshot = await requestAdminSnapshot(45_000)
+    ?? await requestAdminSnapshot(20_000);
+  if (snapshot) {
+    recentSnapshot = { value: snapshot, expiresAt: Date.now() + SNAPSHOT_TTL_MS };
+    return snapshot;
+  }
+  // Se o Google oscilar durante uma atualização, mantém a última leitura válida.
+  return recentSnapshot?.value ?? null;
+}
+
+export async function getSheetsAdminSnapshot(): Promise<SheetsAdminSnapshot | null> {
+  if (!hasGoogleSheetsQuoteConfig()) return null;
+  if (recentSnapshot && recentSnapshot.expiresAt > Date.now()) return recentSnapshot.value;
+  if (pendingSnapshot) return pendingSnapshot;
+  pendingSnapshot = refreshAdminSnapshot().finally(() => {
+    pendingSnapshot = null;
+  });
+  return pendingSnapshot;
 }
 
 /* ------------------------------------------------------------------ custos */
