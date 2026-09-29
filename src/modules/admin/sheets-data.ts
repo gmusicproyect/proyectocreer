@@ -1,3 +1,4 @@
+import { callAppsScript } from "../../lib/admin/apps-script.ts";
 import {
   getGoogleSheetsQuoteConfig,
   hasGoogleSheetsQuoteConfig,
@@ -14,6 +15,10 @@ export interface SheetsAdminProduct {
   featured: boolean;
   incomplete: boolean;
   image: string;
+  images: string[];
+  description: string;
+  notes: string;
+  createdAt: string;
   updatedAt: string;
 }
 
@@ -24,6 +29,8 @@ export interface SheetsAdminCategory {
   description: string;
   active: boolean;
   order: number;
+  productCount: number;
+  version: string;
 }
 
 export interface SheetsAdminCustomer {
@@ -34,6 +41,9 @@ export interface SheetsAdminCustomer {
   phone: string;
   createdAt: string;
   updatedAt: string;
+  version: string;
+  duplicate: boolean;
+  quoteCount: number;
 }
 
 export interface SheetsAdminQuoteItem {
@@ -51,7 +61,11 @@ export interface SheetsAdminQuote {
   reference: string;
   status: string;
   notes: string;
+  internalNotes: string;
+  customerId: string;
   createdAt: string;
+  updatedAt: string;
+  version: string;
   contact: {
     name: string;
     company: string;
@@ -106,6 +120,12 @@ function list(value: unknown) {
   return Array.isArray(value) ? value : [];
 }
 
+/** Só aceita URLs de imagem do Google (o painel nunca recebe IDs soltos de Drive). */
+function safeImage(value: unknown) {
+  const url = text(value);
+  return /^https:\/\/lh3\.googleusercontent\.com\/d\/[\w-]+$/.test(url) ? url : "";
+}
+
 export function adminSnapshotFromApi(payload: unknown): SheetsAdminSnapshot {
   const root = record(payload);
   if (root.ok !== true || !root.datos) throw new Error("Resposta inválida da administração.");
@@ -127,6 +147,10 @@ export function adminSnapshotFromApi(payload: unknown): SheetsAdminSnapshot {
       featured: item.destacado === true,
       incomplete: item.incompleto === true,
       image: text(item.imagen),
+      images: [0, 1, 2].map((i) => safeImage(list(item.imagenes)[i])),
+      description: text(item.descripcion),
+      notes: text(item.observaciones),
+      createdAt: text(item.fechaCreacion),
       updatedAt: text(item.fechaActualizacion),
     }];
   });
@@ -142,6 +166,8 @@ export function adminSnapshotFromApi(payload: unknown): SheetsAdminSnapshot {
       description: text(item.descripcion),
       active: item.activa !== false,
       order: number(item.orden, 9999),
+      productCount: Math.max(0, number(item.productos)),
+      version: text(item.version),
     }];
   });
 
@@ -158,6 +184,9 @@ export function adminSnapshotFromApi(payload: unknown): SheetsAdminSnapshot {
       phone: text(item.telefono),
       createdAt: text(item.fechaCreacion),
       updatedAt: text(item.fechaActualizacion),
+      version: text(item.version),
+      duplicate: item.duplicado === true,
+      quoteCount: Math.max(0, number(item.cotizaciones)),
     }];
   });
 
@@ -171,7 +200,11 @@ export function adminSnapshotFromApi(payload: unknown): SheetsAdminSnapshot {
       reference,
       status: text(item.estado).toUpperCase() || "NUEVA",
       notes: text(item.notas),
+      internalNotes: text(item.notasInternas),
+      customerId: text(item.clienteId),
       createdAt: text(item.fechaCreacion),
+      updatedAt: text(item.fechaActualizacion),
+      version: text(item.version),
       contact: {
         name: text(contact.nombre),
         company: text(contact.empresa),
@@ -230,6 +263,51 @@ export async function getSheetsAdminSnapshot(): Promise<SheetsAdminSnapshot | nu
     const snapshot = adminSnapshotFromApi(await response.json());
     recentSnapshot = { value: snapshot, expiresAt: Date.now() + 15000 };
     return snapshot;
+  } catch {
+    return null;
+  }
+}
+
+/* ------------------------------------------------------------------ custos */
+
+export interface SheetsAdminCost {
+  code: string;
+  cost: number | null;
+  supplier: string;
+  notes: string;
+  updatedAt: string;
+  version: string;
+}
+
+export function costsFromApi(payload: unknown): Map<string, SheetsAdminCost> {
+  const root = record(payload);
+  if (root.ok !== true) throw new Error("Resposta inválida dos custos.");
+  const costs = new Map<string, SheetsAdminCost>();
+  for (const value of list(root.costos)) {
+    const item = record(value);
+    const code = text(item.codigo).toUpperCase();
+    if (!code || costs.has(code)) continue;
+    costs.set(code, {
+      code,
+      cost: price(item.costo),
+      supplier: text(item.proveedor),
+      notes: text(item.notas),
+      updatedAt: text(item.fechaActualizacion),
+      version: text(item.version),
+    });
+  }
+  return costs;
+}
+
+/**
+ * Custos internos. Só chamar depois de confirmar `costs:read` no servidor.
+ * Usa o token de administração e não fica em cache compartilhado.
+ */
+export async function getSheetsCosts(): Promise<Map<string, SheetsAdminCost> | null> {
+  const response = await callAppsScript("admin_costos", {}, { token: "admin" });
+  if (!response?.ok) return null;
+  try {
+    return costsFromApi(response);
   } catch {
     return null;
   }

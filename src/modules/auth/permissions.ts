@@ -26,6 +26,9 @@ const permissions: Record<Role, readonly Permission[]> = {
   sales: ["customers:write", "quotations:write"],
   catalog_editor: ["catalog:write"],
 };
+/** Matriz de só leitura para a tela "Equipe e permissões". */
+export const rolePermissions: Readonly<Record<Role, readonly Permission[]>> = permissions;
+
 export interface Membership {
   userId: string;
   tenantId: string;

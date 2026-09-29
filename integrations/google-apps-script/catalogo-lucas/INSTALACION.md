@@ -30,6 +30,7 @@ GOOGLE SHEETS  ──  PRODUCTOS · CATEGORIAS · IMPORTACIONES · CONFIGURACION
 | `Validaciones.gs` | `validarBase()` y `generarResumen()`. |
 | `Api.gs` | `getProductosPublicados()`, `getProductosPorCategoria()`, `doGet()` y la estructura de `generarDescripcionIA()`. |
 | `Cotizaciones.gs` | Valida la solicitud web, actualiza o crea el cliente y registra la cotización con sus productos. |
+| `AdminWeb.gs` | Escrituras del panel web de Creer: productos, imágenes, categorías, clientes, estado de cotizaciones y costos internos. Solo con `ADMIN_WRITE_TOKEN`. |
 | `Panel.html` · `Styles.html` · `Scripts.html` | Panel administrador (estructura, estilos, lógica). |
 
 **Decisiones de diseño importantes**
@@ -195,3 +196,29 @@ El token solo viaja entre el servidor de la web y Apps Script; no se expone al n
 | La importación quedó "trabada" | Se cerró el panel en medio de un lote | Menú **Sistema → Cancelar importación en curso**, o vuelve a importar la misma carpeta para continuar. |
 | Código numérico pierde ceros (`00123` → `123`) | Sheets lo convirtió en número al escribirlo a mano | La columna CODIGO queda en formato texto tras Inicializar. Escribe de nuevo el código. |
 | "Se ha excedido el tiempo máximo de ejecución" | Validación con una carpeta enorme | La validación revisa Drive como máximo 60 s y marca `ESCANEO_PARCIAL`. Los datos de la hoja sí se revisan completos. |
+
+
+## 11. Panel web operativo (versión 1.1.0)
+
+El panel de la web (`/admin`) ya puede crear y editar productos, subir imágenes, administrar categorías y clientes, cambiar el estado de las cotizaciones y guardar costos internos. Todo se escribe en esta misma planilla.
+
+**Activación (una sola vez):**
+
+1. Pega en el proyecto de Apps Script los archivos actualizados: `Config.gs`, `Code.gs`, `Api.gs`, `Productos.gs` y el nuevo **`AdminWeb.gs`**.
+2. En la planilla: **CATÁLOGO LUCAS → Sistema → Inicializar / reparar hojas**. Crea la pestaña **COSTOS**, agrega `NOTAS_INTERNAS` y `FECHA_ACTUALIZACION` en COTIZACIONES y la clave `DRIVE_UPLOAD_ID` en CONFIGURACION. No borra ni mueve nada.
+3. En **Configuración del proyecto → Propiedades del script**, crea `ADMIN_WRITE_TOKEN` con un valor largo y aleatorio, **distinto** de `QUOTE_API_TOKEN`.
+4. En CONFIGURACION, `DRIVE_UPLOAD_ID` = ID o link de la carpeta pública de imágenes (por ejemplo `Porta-Retratos`). Si queda vacío se usa `DRIVE_PRINCIPAL_ID`.
+5. **Implementar → Gestionar implementaciones → editar → Nueva versión.** La URL `/exec` no cambia.
+6. En el servidor web: `GOOGLE_ADMIN_WRITE_TOKEN` con el mismo valor del paso 3.
+
+**Reglas que conviene conocer:**
+
+- **COSTOS es privada.** El catálogo público y `admin_datos` nunca la leen; solo el panel, con el token de administración y para el papel *Administrador de la Creer*. Quien tenga acceso a la planilla sí la ve: compártela solo con personas que pueden conocer los costos.
+- **Imágenes subidas desde el panel:** van a `DRIVE_UPLOAD_ID` con el nombre que entiende el importador (`CODIGO.jpg`, `CODIGO_1.png`, `CODIGO_2.webp`), se comparten con enlace (solo lectura) y reemplazan la imagen del espacio elegido. La imagen anterior queda en la carpeta; una importación futura la reportará como “espacio ocupado” y no la reasigna. Solo se aceptan JPG, PNG y WEBP de hasta 3 MB, verificando el contenido real del archivo, así la carpeta pública sigue teniendo **solo imágenes**.
+- **Estados del producto en el panel:** Pendente (`PENDIENTE`), Publicado (`PUBLICADO`) e Inativo (`OCULTO`). `BORRADOR` sigue válido en la hoja por compatibilidad.
+- **Categorías:** al renombrar, los productos de esa categoría pasan al nombre nuevo en la misma operación. El `SLUG` no cambia, para no romper enlaces. En lugar de borrar, se desactivan.
+- **Clientes:** un correo = un cliente. El panel no deja crear ni editar un cliente con un correo que ya existe, y marca los duplicados antiguos para que se corrijan a mano.
+- **Conflictos:** si alguien cambia una fila en la hoja (o en otra pestaña del panel) mientras otra persona la edita, el segundo guardado se rechaza y el panel recarga los datos reales.
+- Cada cambio queda en LOGS con el correo de quien lo hizo. El valor de los costos no se escribe en LOGS.
+
+**Probar sin tocar la planilla real:** `node integrations/google-apps-script/catalogo-lucas/dev/servidor-simulado.mjs` levanta una copia en memoria que ejecuta estos mismos `.gs` (instrucciones dentro del archivo).

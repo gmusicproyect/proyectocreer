@@ -1,5 +1,5 @@
 import { hasSupabaseConfig } from "../../lib/supabase/config.ts";
-import { can, type Role } from "./permissions.ts";
+import { can, type Permission, type Role } from "./permissions.ts";
 
 export function isAdminPreviewEnabled() {
   return (
@@ -72,11 +72,12 @@ export function canReadSheetsData(access: AdminAccess | null): boolean {
 }
 
 /**
- * ¿Puede editar el catálogo de la planilha? Se revisa en el servidor en cada
- * escritura: rol con catalog:write Y pertenecer al tenant dueño de la planilla.
- * La prévia local (solo en desarrollo) también puede, para probar.
+ * ¿Puede hacer esta operación sobre la planilha? Se revisa en el servidor en
+ * cada lectura sensible y en cada escritura: permiso del rol Y pertenecer al
+ * tenant dueño de la planilla. La prévia local (solo en desarrollo) puede todo,
+ * para probar; en producción esa bandera se ignora.
  */
-export function canEditSheetsCatalog(access: AdminAccess | null): boolean {
+export function canUseSheets(access: AdminAccess | null, permission: Permission): boolean {
   if (!access) return false;
   if (access.mode === "preview") return isAdminPreviewEnabled();
   return (
@@ -84,7 +85,18 @@ export function canEditSheetsCatalog(access: AdminAccess | null): boolean {
     can(
       { userId: access.userId, tenantId: access.tenantId, role: access.role as Role },
       access.tenantId,
-      "catalog:write",
+      permission,
     )
   );
+}
+
+/** ¿Puede editar el catálogo (productos, categorías e imágenes)? */
+export function canEditSheetsCatalog(access: AdminAccess | null): boolean {
+  return canUseSheets(access, "catalog:write");
+}
+
+/** Quién hizo el cambio, para LOGS de la planilla. */
+export function accessAuthor(access: AdminAccess | null): string {
+  if (!access) return "desconhecido";
+  return access.mode === "supabase" ? access.userEmail || access.userId : "prévia local";
 }

@@ -43,9 +43,10 @@ npm start
 - Módulo instalado de Google Sheets + Apps Script para que Lucas importe imágenes
   desde Drive, complete productos y publique el catálogo sin duplicados.
 - Acceso administrativo cerrado por defecto; el modo local queda deshabilitado en producción.
+- Panel operativo sobre la planilla privada: crear y editar productos, subir o asociar imágenes, precios, estados (Pendente, Publicado, Inativo), categorías con renombre en cascada, clientes sin duplicados, situación de cotizaciones y costos internos privados con margen. Permisos por papel en cada operación del servidor y control de conflictos (ver ADR 002).
 
 ## Siguiente alcance
 
-Crear o enlazar el proyecto Supabase, aplicar la migración y registrar los primeros usuarios. Después corresponde implementar el CRUD visual de productos, categorías, costos y clientes; carga de imágenes desde el panel; edición del estado y precio de cotizaciones; facturación y publicación. Sin credenciales de Supabase, el laboratorio conserva carrito y solicitudes en `localStorage`.
+Crear o enlazar el proyecto Supabase, aplicar la migración y registrar los primeros usuarios (sin eso no hay acceso real al panel fuera de la prévia local). Después: migrar productos, costos, clientes y cotizaciones de la planilla a Supabase, elaborar propuestas con importes validados en servidor, facturación y publicación en Vercel. Sin credenciales de Supabase, el laboratorio conserva carrito y solicitudes en `localStorage`.
 
 Consultar [instalación del Catálogo Lucas](integrations/google-apps-script/catalogo-lucas/INSTALACION.md), [activación de Supabase](docs/supabase-setup.md), [arquitectura](docs/architecture.md), [modelo comercial](docs/service-model.md) y [siguientes capas](docs/roadmap.md).

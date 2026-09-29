@@ -1,8 +1,13 @@
+import Link from "next/link";
+
 import { EmptyState } from "@/components/empty-state";
+import { formatMoney, formatPercent, QuoteStatusForm } from "./admin-editors";
+import { marginOf } from "./admin-forms";
 import { ProductQuickEdit } from "./product-quick-edit";
 import { priceToInput } from "./product-edit";
 import type {
   SheetsAdminCategory,
+  SheetsAdminCost,
   SheetsAdminCustomer,
   SheetsAdminProduct,
   SheetsAdminQuote,
@@ -17,7 +22,7 @@ const statusLabels: Record<string, string> = {
   PUBLICADO: "Publicado",
   PENDIENTE: "Pendente",
   BORRADOR: "Rascunho",
-  OCULTO: "Oculto",
+  OCULTO: "Inativo",
 };
 
 function formatPrice(value: number | null) {
@@ -37,9 +42,12 @@ function formatDate(value: string) {
 export function SheetsProductsPanel({
   products,
   canEdit = false,
+  costs = null,
 }: {
   products: SheetsAdminProduct[];
   canEdit?: boolean;
+  /** Só chega aqui quando o papel tem costs:read (conferido no servidor). */
+  costs?: Map<string, SheetsAdminCost> | null;
 }) {
   if (!products.length) {
     return <EmptyState title="Nenhum produto cadastrado" description="Os produtos da planilha aparecerão aqui." />;
@@ -54,6 +62,17 @@ export function SheetsProductsPanel({
               Cód. {product.code} · {product.category || "Sem categoria"}
               {product.incomplete ? " · incompleto" : ""}
             </span>
+            {costs && (
+              <span className="cost-line">
+                Custo {formatMoney(costs.get(product.code)?.cost ?? null)}
+                {" · "}margem {formatPercent(marginOf(product.price, costs.get(product.code)?.cost ?? null))}
+              </span>
+            )}
+            {canEdit && (
+              <Link className="row-link" href={`/admin/produtos/${encodeURIComponent(product.code)}`}>
+                Editar ficha completa →
+              </Link>
+            )}
           </div>
           {canEdit ? (
             <ProductQuickEdit
@@ -79,6 +98,7 @@ export function SheetsProductsPanel({
   );
 }
 
+/** Somente leitura (sem permissão de catálogo). */
 export function SheetsCategoriesPanel({ categories }: { categories: SheetsAdminCategory[] }) {
   if (!categories.length) {
     return <EmptyState title="Nenhuma categoria cadastrada" description="As categorias da planilha aparecerão aqui." />;
@@ -125,9 +145,11 @@ export function SheetsCustomersPanel({ customers }: { customers: SheetsAdminCust
 export function SheetsQuotesPanel({
   quotes,
   compact = false,
+  canEdit = false,
 }: {
   quotes: SheetsAdminQuote[];
   compact?: boolean;
+  canEdit?: boolean;
 }) {
   const visible = compact ? quotes.slice(0, 2) : quotes;
   if (!visible.length) {
@@ -161,7 +183,14 @@ export function SheetsQuotesPanel({
             ))}
           </div>
           {quote.notes && <p className="request-notes">“{quote.notes}”</p>}
-          <footer>Registrado em {formatDate(quote.createdAt)}</footer>
+          {quote.internalNotes && !compact && (
+            <p className="request-notes internal">Nota interna: {quote.internalNotes}</p>
+          )}
+          <footer>
+            Registrado em {formatDate(quote.createdAt)}
+            {quote.updatedAt ? ` · atualizado em ${formatDate(quote.updatedAt)}` : ""}
+          </footer>
+          {canEdit && !compact && quote.id && <QuoteStatusForm quote={quote} />}
         </article>
       ))}
     </div>
