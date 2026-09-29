@@ -6,7 +6,93 @@ import { useMemo, useState } from "react";
 import { EmptyState } from "@/components/empty-state";
 import type { DemoProduct } from "./demo-products";
 
-export function Catalog({ products }: { products: DemoProduct[] }) {
+const FEATURED_COUNT = 8;
+
+function formatPrice(product: DemoProduct) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: product.currency,
+  }).format(product.price ?? 0);
+}
+
+function ProductCard({ product }: { product: DemoProduct }) {
+  const href = `/catalogo/${encodeURIComponent(product.code)}`;
+  return (
+    <article className="product-card">
+      <Link href={href} className="product-image" tabIndex={-1} aria-hidden="true">
+        <Image
+          src={product.image}
+          alt=""
+          fill
+          sizes="(max-width: 800px) 50vw, (max-width: 1050px) 33vw, 25vw"
+        />
+        <span>{product.category}</span>
+      </Link>
+      <div className="product-content">
+        <p className="product-code">CÓD. {product.code}</p>
+        <h3>
+          <Link href={href}>{product.name}</Link>
+        </h3>
+        <p>{product.description}</p>
+        <div className="product-price">
+          {product.price !== null ? (
+            <strong>{formatPrice(product)}</strong>
+          ) : (
+            <span>Preço sob consulta</span>
+          )}
+          <Link href={href} aria-label={`Solicitar orçamento de ${product.name}`}>
+            Solicitar orçamento <span aria-hidden="true">→</span>
+          </Link>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+/**
+ * variant="featured": vitrine da página inicial (sem busca nem filtros,
+ * 8 produtos e link para o catálogo completo).
+ */
+export function Catalog({
+  products,
+  variant = "full",
+}: {
+  products: DemoProduct[];
+  variant?: "full" | "featured";
+}) {
+  if (variant === "featured") {
+    const featured = products.slice(0, FEATURED_COUNT);
+    return (
+      <section id="catalogo" className="catalog-section">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">COLEÇÃO PILOTO · LINHA ECOLÓGICA</p>
+            <h2>Presentes com propósito</h2>
+          </div>
+          <Link className="button outline" href="/catalogo">
+            Ver catálogo completo <span aria-hidden="true">→</span>
+          </Link>
+        </div>
+        <div className="product-grid">
+          {featured.map((product) => (
+            <ProductCard key={product.code} product={product} />
+          ))}
+        </div>
+        {products.length > featured.length && (
+          <div className="catalog-more">
+            <Link className="button" href="/catalogo">
+              Ver os {products.length} produtos <span aria-hidden="true">→</span>
+            </Link>
+          </div>
+        )}
+      </section>
+    );
+  }
+
+  return <FullCatalog products={products} />;
+}
+
+function FullCatalog({ products }: { products: DemoProduct[] }) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("Todos");
   const categories = useMemo(
@@ -83,41 +169,7 @@ export function Catalog({ products }: { products: DemoProduct[] }) {
       {visibleProducts.length > 0 ? (
         <div className="product-grid">
           {visibleProducts.map((product) => (
-            <article className="product-card" key={product.code}>
-              <Link
-                href={`/catalogo/${product.code}`}
-                className="product-image"
-              >
-                <Image
-                  src={product.image}
-                  alt={product.name}
-                  fill
-                  sizes="(max-width: 620px) 100vw, (max-width: 1000px) 50vw, 25vw"
-                />
-                <span>{product.category}</span>
-              </Link>
-              <div className="product-content">
-                <p className="product-code">CÓD. {product.code}</p>
-                <h3>
-                  <Link href={`/catalogo/${product.code}`}>{product.name}</Link>
-                </h3>
-                <p>{product.description}</p>
-                <div className="product-price">
-                  <div>
-                    <span>Preço</span>
-                    <strong>
-                      {product.price === null
-                        ? "Sob consulta"
-                        : new Intl.NumberFormat("pt-BR", {
-                            style: "currency",
-                            currency: product.currency,
-                          }).format(product.price)}
-                    </strong>
-                  </div>
-                  <Link href={`/catalogo/${product.code}`}>Ver opções →</Link>
-                </div>
-              </div>
-            </article>
+            <ProductCard key={product.code} product={product} />
           ))}
         </div>
       ) : (
