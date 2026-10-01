@@ -27,6 +27,7 @@
 | #4 | Edición rápida de precio y estado. |
 | #5 | Panel operativo: productos, imágenes, categorías, clientes, cotizaciones y costos privados. |
 | #6 | Lecturas del panel más estables. |
+| #7 | Estado del proyecto, flujo de trabajo y tareas documentados; integrado el 2026-10-01. |
 
 ## Tareas
 
@@ -48,7 +49,7 @@
 
 ## Ramas
 
-- Rama de tarea 002: `codex/login-lucas`. Al verificar el 2026-10-01, el PR #7 (`codex/workflow-docs`) seguía abierto. Antes de integrar #8, comprobar su estado; después de integrar #7 por decisión de JP, reconciliar ambos archivos y actualizar esta nota.
+- Rama de tarea 002: `codex/login-lucas`. El PR #7 se integró el 2026-10-01 por autorización de JP. La rama de #8 incorpora la integración y conserva el estado y la evidencia actualizados de 002; falta revisar el diff final y completar las pruebas de producción.
 - Integradas y candidatas a borrar después de confirmar que no tienen trabajo exclusivo: `codex/admin-operativo`, `codex/admin-sheets`, `design/landing-tipografia` y `feat/admin-editar-precio-estado`.
 
 ## Riesgos conocidos

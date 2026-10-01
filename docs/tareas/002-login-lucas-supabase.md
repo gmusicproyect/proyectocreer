@@ -56,7 +56,7 @@ Lucas define su contraseña mediante la invitación o recuperación de Supabase;
 
 ## Evidencia de ejecución · 2026-10-01
 
-- Al verificar el 2026-10-01, PR #7 estaba abierto; documentación revisada en `codex/workflow-docs`, commit `c6427bf5bd6d8541e3de20f17a9cf735ee107676`.
+- PR #7 integrado el 2026-10-01 en `b2da99350a367c60cf46043e33e198d1aba6f188` por autorización de JP; documentación revisada originalmente en `codex/workflow-docs`, commit `c6427bf5bd6d8541e3de20f17a9cf735ee107676`.
 - Rama de tarea creada desde la integración actualizada, commit `9420bea68572cfa12f9223b137851a7366578622`.
 - Migración y seed leídos en GitHub desde `codex/layer-01-foundation`: blobs `c10e0ada5e01eaee9672d9c156e4cce6bc9aae53` y `708b3e7e6e188019c65640e89c47bc52c7e4b103`.
 - `profiles` tiene `id`, `full_name` y fechas; no existe trigger de alta de perfil. `memberships` tiene unicidad `(tenant_id, user_id)` y acepta `tenant_admin`. El seed identifica la empresa por slug `creer`.
@@ -65,7 +65,7 @@ Lucas define su contraseña mediante la invitación o recuperación de Supabase;
 - SELECT posterior devolvió exactamente una fila: perfil existente, slug `creer`, tenant activo y rol `tenant_admin`. No se hardcodearon UUIDs ni se cambió el esquema.
 - Producción muestra `/acesso`. Abrir `/admin` sin sesión redirige a `/acesso?erro=acesso` y muestra denegación de acceso. Esta prueba no demuestra el caso de usuario autenticado sin membresía.
 - Bloqueo exacto: falta una sesión real de Lucas en el navegador de producción. No se solicitaron ni copiaron contraseñas. No se probaron todavía operaciones del panel, edición reversible, LOGS, usuario autenticado sin membresía ni RLS reproducible.
-- La tarea sigue Bloqueada, sin cierre de criterios pendientes. Revisión por otra persona e integración decidida por JP. Este PR incluye solo los dos documentos de 002 y depende documentalmente de PR #7; reconciliarlos con su versión integrada antes del merge.
+- La tarea sigue Bloqueada, sin cierre de criterios pendientes. Revisión por otra persona e integración decidida por JP. Este PR modifica solo los dos documentos de 002 sobre la integración de #7. Los conflictos add/add se resolvieron conservando la versión actualizada de #8; falta la revisión del diff final antes de integrar.
 
 ## Continuación y evidencia requerida
 
@@ -108,4 +108,4 @@ Claude realizó la revisión independiente del commit `c0f5768`; JP la trasladó
 
 Se retiró el correo personal del SQL público y se reescribieron los commits propios de esta rama. La sustitución no garantiza eliminar copias o referencias históricas conservadas por GitHub. Se corrigieron la atribución de la revisión y la frase sobre el navegador. Estos ajustes posteriores al commit revisado requieren nueva revisión.
 
-Antes de integrar #8, comprobar el estado de #7. Si JP lo integra, actualizar esta rama desde `codex/layer-01-foundation`, conservar el estado y la evidencia actualizados de #8 en los dos documentos en conflicto, actualizar las referencias al estado de #7 en `docs/estado.md` y en la descripción del PR, y revisar nuevamente el diff. El PR continúa en borrador y las pruebas de producción siguen pendientes.
+PR #7 integrado por autorización de JP el 2026-10-01. Esta rama incorpora `codex/layer-01-foundation`; los conflictos de ambos documentos se resolvieron conservando la evidencia y el estado de #8 y actualizando las referencias a #7. Revisar nuevamente el diff final. El PR continúa en borrador y las pruebas de producción siguen pendientes.
