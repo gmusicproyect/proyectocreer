@@ -47,6 +47,6 @@ npm start
 
 ## Siguiente alcance
 
-Crear o enlazar el proyecto Supabase, aplicar la migración y registrar los primeros usuarios (sin eso no hay acceso real al panel fuera de la prévia local). Después: migrar productos, costos, clientes y cotizaciones de la planilla a Supabase, elaborar propuestas con importes validados en servidor, facturación y publicación en Vercel. Sin credenciales de Supabase, el laboratorio conserva carrito y solicitudes en `localStorage`.
+Supabase y Vercel ya están activos. El siguiente resultado es crear la cuenta y membresía de Lucas, verificar las operaciones del panel contra la planilla real y proteger el formulario publicado con un límite de solicitudes. El estado y el orden de trabajo se mantienen en [docs/estado.md](docs/estado.md).
 
-Consultar [instalación del Catálogo Lucas](integrations/google-apps-script/catalogo-lucas/INSTALACION.md), [activación de Supabase](docs/supabase-setup.md), [arquitectura](docs/architecture.md), [modelo comercial](docs/service-model.md) y [siguientes capas](docs/roadmap.md).
+Antes de trabajar, leer el [estado del proyecto](docs/estado.md) y el [flujo de trabajo](docs/flujo-de-trabajo.md). Consultar también [instalación del Catálogo Lucas](integrations/google-apps-script/catalogo-lucas/INSTALACION.md), [activación de Supabase](docs/supabase-setup.md), [arquitectura](docs/architecture.md), [modelo comercial](docs/service-model.md) y [siguientes capas](docs/roadmap.md).
