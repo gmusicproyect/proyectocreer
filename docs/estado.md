@@ -2,7 +2,7 @@
 
 > Leer este archivo antes de trabajar y actualizarlo en el mismo PR que cambie el estado de una tarea.
 
-**Última actualización:** 2026-09-29 · Codex, con el traspaso de Claude y verificación del entorno activo.
+**Última actualización:** 2026-10-01 · Codex, con el traspaso de Claude y verificación del entorno activo.
 
 ## Rama de integración
 
@@ -36,6 +36,7 @@
 | 002 | [Crear el acceso real de Lucas con Supabase](tareas/002-login-lucas-supabase.md) | En curso | Recibir el correo de Lucas, crear su usuario y verificar `tenant_admin`. |
 | 003 | [Limitar solicitudes del formulario de cotización](tareas/003-limite-solicitudes-cotizacion.md) | Lista | Implementar límite e honeypot antes de recibir tráfico real. |
 | 004 | [Completar la publicación](tareas/004-publicar-sitio.md) | En curso | Conectar despliegue automático, probar una cotización publicada y cerrar 002/003. |
+| 005 | [Ayuda contextual del panel](tareas/005-ayuda-panel.md) | En revisión | Instrucciones en portugués por sección; revisión independiente e integración pendientes. |
 
 **Orden recomendado:** terminar 002, ejecutar 003, verificar 001 y cerrar 004.
 

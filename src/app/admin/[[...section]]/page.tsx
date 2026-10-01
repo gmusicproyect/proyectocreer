@@ -10,6 +10,7 @@ import {
   ProductEditor,
 } from "@/modules/admin/admin-editors";
 import { modules } from "@/modules/admin/navigation";
+import { SectionHelp } from "@/modules/admin/section-help";
 import { getSheetsAdminSnapshot, getSheetsCosts } from "@/modules/admin/sheets-data";
 import {
   SheetsCategoriesPanel,
@@ -122,7 +123,10 @@ export default async function Admin({
           <p className="eyebrow">
             CREER / {current.name.toLocaleUpperCase("pt-BR")}
           </p>
-          <h1>{current.name}</h1>
+          <div className="admin-title-help">
+            <h1>{current.name}</h1>
+            <SectionHelp key={current.slug} section={current.slug} name={current.name} />
+          </div>
           <p className="muted">{current.description}</p>
           {productPath ? (
             <ProductEditor
