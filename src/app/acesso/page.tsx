@@ -18,12 +18,12 @@ const errorMessages: Record<string, string> = {
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ erro?: string }>;
+  searchParams: Promise<{ erro?: string; senha?: string }>;
 }) {
   const configured = hasSupabaseConfig();
   if (configured && (await getAdminAccess())) redirect("/admin");
 
-  const { erro } = await searchParams;
+  const { erro, senha } = await searchParams;
   const errorMessage = erro ? errorMessages[erro] : null;
 
   return (
@@ -34,6 +34,7 @@ export default async function Page({
         {configured ? (
           <>
             <p>Entre com o acesso enviado para a equipe Creer.</p>
+            {senha === "atualizada" && <p role="status">Senha salva. Entre com sua nova senha.</p>}
             {errorMessage && (
               <div className="form-error" role="alert">
                 {errorMessage}
@@ -57,6 +58,9 @@ export default async function Page({
                 Entrar na administração
               </button>
             </form>
+            <Link className="text-button" href="/acesso/recuperar">
+              Criar ou recuperar minha senha
+            </Link>
           </>
         ) : (
           <>
