@@ -11,6 +11,8 @@
 .section-help-content ol { padding-left: 24px; margin: 0; list-style: decimal; }
 .section-help-content li + li { margin-top: 10px; }
 .section-help-content p { margin-bottom: 0; color: var(--muted); font-size: .9rem; }
+.section-help-content .section-help-when { margin: 0 0 14px; color: var(--ink); font-size: 1rem; }
+.section-help-content ol + p { margin-top: 16px; }
 :root {
   --paper: #fbf9f6;
   --ink: #302b27;

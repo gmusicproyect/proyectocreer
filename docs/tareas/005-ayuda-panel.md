@@ -44,6 +44,7 @@ Revisión del commit `4874981`, publicada como comentario en el PR #9.
   - Cierre: «Clique» pasa a «Toque ou clique» para móvil.
   - Clientes y Categorias: nombran **+ Novo cliente**, **+ Nova categoria** y **Editar**; se añaden la regla de e-mail único y el renombre en cascada.
   - Produtos: enviar otra foto al mismo espacio la reemplaza; Pendente ya no sugiere que oculta el producto (en modo `presentation` aparece en el catálogo sin precio); costos en la sección **Custo interno**.
+- Segundo ajuste, pedido por JP: la ayuda debe ser práctica para Lucas. Cada sección empieza con **«Preciso fazer algo aqui?»** y una respuesta directa («Não» en Visão geral, Equipe y Assinatura; «Sim» o «Só se» en las demás). Siguen pasos cortos con los nombres exactos de los botones. Orçamentos aclara que el panel no envía mensajes y que Lucas responde por e-mail o teléfono.
 - Como Claude modificó el texto, estos ajustes necesitan revisión de otra persona (Codex o quien designe JP) antes de integrar.
 
 ## Pendiente

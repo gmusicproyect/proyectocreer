@@ -2,41 +2,71 @@ import { modules } from "./navigation";
 
 type Section = (typeof modules)[number]["slug"];
 
-const instructions: Record<Section, readonly string[]> = {
-  "": [
-    "Aqui você acompanha os totais de produtos, clientes e orçamentos e as solicitações recentes.",
-    "Escolha uma área no menu para consultar os detalhes. Esta visão geral não altera os cadastros.",
-  ],
-  produtos: [
-    "Use Novo produto para cadastrar ou Editar ficha completa para abrir um produto existente.",
-    "Ao cadastrar, informe um código único, nome, categoria e preço. O código é preenchido por você e fica fixo depois de salvar.",
-    "Salve o produto primeiro. Depois, em Enviar imagens, escolha até três fotos JPG, PNG ou WEBP de até 3 MB cada. Elas ficam associadas ao código do produto. Enviar outra foto para o mesmo espaço substitui a anterior.",
-    "Para publicar, preencha também descrição e imagem principal. Pendente indica que ainda falta completar; Inativo retira o produto do catálogo.",
-    "Os custos internos ficam na seção Custo interno da ficha e só aparecem para quem tem permissão; não aparecem no catálogo público.",
-  ],
-  categorias: [
-    "As categorias agrupam os produtos e ajudam o cliente a encontrar o que procura no catálogo.",
-    "Use + Nova categoria para criar e Editar para mudar nome, ordem ou Ativa no catálogo. Ao renomear, os produtos dessa categoria são atualizados. Depois, selecione a categoria na ficha do produto.",
-  ],
-  clientes: [
-    "Consulte os contatos e as empresas atendidas. Use + Novo cliente para cadastrar e Editar para atualizar um cliente.",
-    "O e-mail não pode se repetir: se já existir, edite o cliente existente. Essas informações ficam na área administrativa, fora do catálogo público.",
-  ],
-  orcamentos: [
-    "Aqui você acompanha os pedidos de orçamento, os produtos solicitados e os dados de contato.",
-    "Use Atualizar situação para mudar a situação do pedido e escrever notas internas. O cliente não vê as notas e não recebe nenhuma mensagem quando você salva.",
-  ],
-  equipe: [
-    "Esta tabela explica o que cada papel pode consultar ou alterar, como administrador, vendas e editor do catálogo.",
-    "Esta tela apenas mostra as permissões. Para cadastrar alguém ou mudar seu acesso, fale com o responsável pela demonstração.",
-  ],
-  assinatura: [
-    "Esta área está em preparação para apresentar o plano, a manutenção e o suporte.",
-    "Nenhuma cobrança está ativa nesta demonstração. Por enquanto, não é necessário contratar ou pagar nada aqui.",
-  ],
+// Ajuda escrita para o Lucas: primeiro diz se há algo para fazer na área,
+// depois os passos com os nomes exatos dos botões da tela.
+const instructions: Record<Section, { when: string; steps: readonly string[] }> = {
+  "": {
+    when: "Não. É só um resumo do movimento.",
+    steps: [
+      "Veja quantos produtos, clientes e orçamentos existem e os pedidos mais recentes.",
+      "Se chegou um pedido novo, abra Orçamentos para responder ao cliente.",
+    ],
+  },
+  produtos: {
+    when: "Sim, quando chegar um produto novo ou quando precisar mudar preço, foto ou estado de um produto.",
+    steps: [
+      "Produto novo: toque em + Novo produto e preencha código, nome, categoria e preço. O código não pode ser mudado depois de salvar.",
+      "Produto que já existe: toque em Editar ficha completa.",
+      "Fotos: salve o produto primeiro. Depois, em Enviar imagens, escolha até 3 fotos (JPG, PNG ou WEBP, até 3 MB cada). Enviar outra foto no mesmo espaço troca a anterior.",
+      "Estado: Publicado mostra o produto no catálogo, Pendente indica que ainda falta alguma informação e Inativo tira o produto do catálogo.",
+      "Para publicar, o produto precisa de nome, categoria, preço, descrição e imagem principal.",
+      "Custo e fornecedor ficam em Custo interno. Os clientes nunca veem essas informações.",
+    ],
+  },
+  categorias: {
+    when: "Só se quiser criar um novo grupo de produtos ou mudar o nome ou a ordem de um grupo.",
+    steps: [
+      "Nova categoria: toque em + Nova categoria, escreva o nome e toque em Criar categoria.",
+      "Mudar uma categoria: toque em Editar. Você pode mudar o nome, a ordem no catálogo e se ela está ativa.",
+      "Se mudar o nome, os produtos dessa categoria passam a usar o novo nome sozinhos.",
+    ],
+  },
+  clientes: {
+    when: "Só se quiser guardar ou corrigir os dados de uma empresa ou de um contato.",
+    steps: [
+      "Cliente novo: toque em + Novo cliente, preencha os dados e toque em Cadastrar cliente.",
+      "Corrigir: toque em Editar no cliente.",
+      "Cada e-mail só pode ser usado uma vez. Se aparecer E-mail repetido, corrija o e-mail de um dos cadastros.",
+      "Esses dados ficam só aqui no painel; não aparecem no catálogo.",
+    ],
+  },
+  orcamentos: {
+    when: "Sim, sempre que entrar um pedido novo de orçamento.",
+    steps: [
+      "Cada pedido mostra quem pediu, os produtos e os dados de contato.",
+      "Responda ao cliente pelo e-mail ou telefone do pedido. O painel não envia mensagens.",
+      "Depois, toque em Atualizar situação para marcar a etapa (por exemplo, Em análise ou Cotada) e anotar o que foi combinado.",
+      "O cliente não vê essas notas.",
+    ],
+  },
+  equipe: {
+    when: "Não. Esta tela só explica o que cada tipo de usuário pode fazer.",
+    steps: [
+      "Administrador da Creer pode mudar tudo, inclusive custos. Vendas cuida de clientes e orçamentos. Editor de catálogo cuida dos produtos e categorias.",
+      "Para dar acesso a outra pessoa, fale com o responsável pela demonstração.",
+    ],
+  },
+  assinatura: {
+    when: "Não, por enquanto.",
+    steps: [
+      "Esta área ainda está em preparação.",
+      "Não há nenhuma cobrança ativa e você não precisa pagar nada.",
+    ],
+  },
 };
 
 export function SectionHelp({ section, name }: { section: Section; name: string }) {
+  const help = instructions[section];
   return (
     <details className="section-help">
       <summary aria-label={`Como usar: ${name}`} title={`Como usar: ${name}`}>
@@ -44,8 +74,9 @@ export function SectionHelp({ section, name }: { section: Section; name: string 
       </summary>
       <div className="section-help-content">
         <h2>Como usar esta área</h2>
-        <ol>{instructions[section].map((step) => <li key={step}>{step}</li>)}</ol>
-        <p>Se os controles de edição não estiverem disponíveis, confira seu acesso com o responsável. Toque ou clique novamente no ? para fechar esta ajuda.</p>
+        <p className="section-help-when"><strong>Preciso fazer algo aqui?</strong> {help.when}</p>
+        <ol>{help.steps.map((step) => <li key={step}>{step}</li>)}</ol>
+        <p>Se algum botão não aparecer, fale com o responsável pela demonstração. Toque no ? de novo para fechar.</p>
       </div>
     </details>
   );
