@@ -34,7 +34,7 @@
 | # | Tarea | Estado | Próximo resultado |
 |---|---|---|---|
 | 001 | [Verificar el panel operativo en la planilla real](tareas/001-activar-panel-operativo.md) | En curso | Completar las pruebas de escritura, imágenes, costos y token de lectura. |
-| 002 | [Crear el acceso real de Lucas con Supabase](tareas/002-login-lucas-supabase.md) | Bloqueada | Perfil y membresía creados; falta sesión real de Lucas para pruebas de producción. |
+| 002 | [Crear el acceso real de Lucas con Supabase](tareas/002-login-lucas-supabase.md) | Bloqueada | Perfil y membresía creados; flujo de contraseña implementado, pendiente de publicación/envío y sesión real. |
 | 003 | [Limitar solicitudes del formulario de cotización](tareas/003-limite-solicitudes-cotizacion.md) | Lista | Implementar límite e honeypot antes de recibir tráfico real. |
 | 004 | [Completar la publicación](tareas/004-publicar-sitio.md) | En curso | Conectar despliegue automático, probar una cotización publicada y cerrar 002/003. |
 

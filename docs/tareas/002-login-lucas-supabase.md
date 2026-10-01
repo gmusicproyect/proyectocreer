@@ -24,7 +24,7 @@ Permitir que Lucas entre por `/acesso` con su propia cuenta y administre Creer s
 
 1. Crear la cuenta de Lucas en Supabase Auth usando el correo confirmado por JP.
 2. Crear su perfil y membresía para el tenant `creer` con rol `tenant_admin`.
-3. Definir una contraseña inicial mediante un flujo seguro; ninguna contraseña se escribe en GitHub o en la documentación.
+3. Definir una contraseña inicial mediante un flujo seguro: implementar solicitud de recuperación y pantalla para definir contraseña, publicarlas y enviar el correo confirmado. Ninguna contraseña se escribe en GitHub o en la documentación.
 4. Verificar productos, categorías, clientes, cotizaciones y costos.
 5. Confirmar que cada edición llega a la planilla y registra el correo real en `LOGS`.
 
@@ -109,3 +109,12 @@ Claude realizó la revisión independiente del commit `c0f5768`; JP la trasladó
 Se retiró el correo personal del SQL público y se reescribieron los commits propios de esta rama. La sustitución no garantiza eliminar copias o referencias históricas conservadas por GitHub. Se corrigieron la atribución de la revisión y la frase sobre el navegador. Estos ajustes posteriores al commit revisado requieren nueva revisión.
 
 PR #7 integrado por autorización de JP el 2026-10-01. Esta rama incorpora `codex/layer-01-foundation`; los conflictos de ambos documentos se resolvieron conservando la evidencia y el estado de #8 y actualizando las referencias a #7. Revisar nuevamente el diff final. El PR continúa en borrador y las pruebas de producción siguen pendientes.
+
+## Contraseña por correo · 2026-10-01
+
+JP solicitó completar y publicar el flujo y enviar el correo a Lucas. Se implementaron `/acesso/recuperar`, `/acesso/nova-senha` y el enlace desde `/acesso`. El correo usa Supabase Auth y la URL exacta de producción; puede abrirse en otro dispositivo sin depender del verificador PKCE del remitente. La pantalla elimina el fragmento con credenciales antes de verificar la sesión, comprueba identidad con Supabase y guarda la contraseña mediante una acción de servidor autenticada. Después cierra la sesión y vuelve al acceso. Los enlaces por token hash de recuperación/invitación también conducen a la pantalla de contraseña; los destinos están limitados a rutas internas conocidas.
+
+- Lint, tipos, 44 pruebas y compilación local con Webpack pasan. Turbopack local quedó bloqueado por el entorno; no se declara su compilación exitosa.
+- Supabase: Site URL corregida desde localhost a `https://proyecto-creer.vercel.app`; allowlist con URL exacta `/acesso/nova-senha`, sin comodines. Persistencia comprobada al recargar.
+- SMTP propio desactivado; servicio de envío pendiente de comprobar. El servicio predeterminado restringe destinatarios a miembros del equipo del proyecto según [Supabase](https://supabase.com/docs/guides/auth/auth-smtp). No conceder acceso al proyecto a Lucas para sortear esta restricción.
+- Publicación y resultado del envío todavía pendientes. No se conoce, modifica ni solicita la contraseña de Lucas. Las pruebas de actualización usan un proveedor simulado; no sustituyen la aceptación del correo y definición de contraseña por Lucas.
