@@ -11,11 +11,11 @@
 ## Entorno activo
 
 - Repositorio: `gmusicproyect/proyectocreer`.
-- Sitio publicado: <https://proyecto-creer.vercel.app>.
+- Demostración publicada para evaluación de Lucas: <https://proyecto-creer.vercel.app>. JP aclaró que no es la página oficial de Lucas; su dominio `.br` queda fuera del alcance. El término producción en Vercel describe el despliegue público de esta demostración.
 - Hosting elegido: Vercel; el despliegue actual se hizo desde CLI.
 - Catálogo público: 20 productos reales de presentación, leídos desde Apps Script con la planilla privada.
 - Supabase: proyecto `proyecto-creer` en São Paulo, con migración, datos iniciales, RLS y variables configuradas en Vercel.
-- Acceso: `/acesso` está publicado; Lucas tiene usuario Auth, perfil y membresía `tenant_admin`; falta validar su sesión real.
+- Acceso: `/acesso` está publicado; Lucas tiene usuario Auth, perfil y membresía `tenant_admin`; recuperación solicitada y registrada; falta que defina contraseña y valide su sesión real.
 
 ## Cambios integrados
 
@@ -34,7 +34,7 @@
 | # | Tarea | Estado | Próximo resultado |
 |---|---|---|---|
 | 001 | [Verificar el panel operativo en la planilla real](tareas/001-activar-panel-operativo.md) | En curso | Completar las pruebas de escritura, imágenes, costos y token de lectura. |
-| 002 | [Crear el acceso real de Lucas con Supabase](tareas/002-login-lucas-supabase.md) | Bloqueada | Perfil y membresía creados; flujo de contraseña implementado, pendiente de publicación/envío y sesión real. |
+| 002 | [Crear el acceso real de Lucas con Supabase](tareas/002-login-lucas-supabase.md) | Bloqueada | Perfil y membresía creados; flujo publicado y recuperación registrada en Supabase; falta que Lucas defina contraseña y pruebe su sesión. |
 | 003 | [Limitar solicitudes del formulario de cotización](tareas/003-limite-solicitudes-cotizacion.md) | Lista | Implementar límite e honeypot antes de recibir tráfico real. |
 | 004 | [Completar la publicación](tareas/004-publicar-sitio.md) | En curso | Conectar despliegue automático, probar una cotización publicada y cerrar 002/003. |
 

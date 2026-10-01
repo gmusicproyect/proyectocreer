@@ -8,7 +8,7 @@
 
 ## Objetivo
 
-Permitir que Lucas entre por `/acesso` con su propia cuenta y administre Creer según el rol `tenant_admin`.
+Permitir que Lucas entre por `/acesso` con su propia cuenta y evalúe el panel de la demostración de Creer según el rol `tenant_admin`. JP aclaró el 2026-10-01 que esta prueba en Vercel no es su página oficial; el dominio `.br` queda fuera del alcance.
 
 ## Situación actual
 
@@ -116,5 +116,8 @@ JP solicitó completar y publicar el flujo y enviar el correo a Lucas. Se implem
 
 - Lint, tipos, 44 pruebas y compilación local con Webpack pasan. Turbopack local quedó bloqueado por el entorno; no se declara su compilación exitosa.
 - Supabase: Site URL corregida desde localhost a `https://proyecto-creer.vercel.app`; allowlist con URL exacta `/acesso/nova-senha`, sin comodines. Persistencia comprobada al recargar.
-- SMTP propio desactivado; servicio de envío pendiente de comprobar. El servicio predeterminado restringe destinatarios a miembros del equipo del proyecto según [Supabase](https://supabase.com/docs/guides/auth/auth-smtp). No conceder acceso al proyecto a Lucas para sortear esta restricción.
-- Publicación y resultado del envío todavía pendientes. No se conoce, modifica ni solicita la contraseña de Lucas. Las pruebas de actualización usan un proveedor simulado; no sustituyen la aceptación del correo y definición de contraseña por Lucas.
+- SMTP propio desactivado; la solicitud puntual para Lucas fue aceptada y registrada. El servicio predeterminado restringe destinatarios a miembros del equipo del proyecto según [Supabase](https://supabase.com/docs/guides/auth/auth-smtp). No conceder acceso al proyecto a Lucas para sortear esta restricción.
+- Publicado en la demostración `https://proyecto-creer.vercel.app`, despliegue [AjnyjeTKFM5F4gixcFkHKKXq8XG5](https://vercel.com/gmusicproyects-projects/proyecto-creer/AjnyjeTKFM5F4gixcFkHKKXq8XG5), código `a94a0e0`. La primera publicación falló por credencial vencida; tras renovar la sesión, Vercel confirmó READY. Compilación remota con Turbopack exitosa.
+- Una solicitud de recuperación para el correo confirmado fue aceptada sin error desde la pantalla publicada. SELECT privado de `auth.users` devolvió una fila con `recovery_requested=true` y `recovery_sent_at` correspondiente a 2026-10-01 16:43:25 (America/Santiago). No se copian correo ni credenciales en la evidencia pública. Esto confirma el registro en Supabase, no recepción en la bandeja de Lucas.
+- Navegador: `/acesso` muestra el enlace de creación/recuperación; `/acesso/recuperar` muestra confirmación genérica después de solicitar el correo; `/acesso/nova-senha` sin sesión/enlace válido rechaza el acceso al formulario; callback incompleto redirige a la solicitud con aviso de enlace inválido.
+- No se conoce, modifica ni solicita la contraseña de Lucas. Las pruebas de actualización usan un proveedor simulado; no sustituyen la aceptación del correo y definición de contraseña por Lucas. Pendientes: abrir el correo, definir contraseña e iniciar sesión, operaciones del panel, edición/restauración y LOGS, usuario autenticado sin membresía y RLS real.
