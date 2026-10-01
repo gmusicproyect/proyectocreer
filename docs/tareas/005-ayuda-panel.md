@@ -3,7 +3,7 @@
 - **Estado:** En revisión
 - **Ejecutor:** Codex
 - **Rama:** `codex/ayuda-panel`
-- **PR:** pendiente
+- **PR:** [#9](https://github.com/gmusicproyect/proyectocreer/pull/9)
 - **Depende de:** ninguna
 
 ## Objetivo
