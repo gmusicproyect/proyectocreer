@@ -48,7 +48,7 @@
 
 ## Ramas
 
-- Rama de tarea 002: `codex/login-lucas`. La documentación base del PR #7 (`codex/workflow-docs`) aún espera integración por JP; reconciliar ambos archivos antes de integrar este PR.
+- Rama de tarea 002: `codex/login-lucas`. Al verificar el 2026-10-01, el PR #7 (`codex/workflow-docs`) seguía abierto. Antes de integrar #8, comprobar su estado; después de integrar #7 por decisión de JP, reconciliar ambos archivos y actualizar esta nota.
 - Integradas y candidatas a borrar después de confirmar que no tienen trabajo exclusivo: `codex/admin-operativo`, `codex/admin-sheets`, `design/landing-tipografia` y `feat/admin-editar-precio-estado`.
 
 ## Riesgos conocidos

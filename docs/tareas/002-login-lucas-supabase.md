@@ -52,11 +52,11 @@ La clave `service_role` no entra en la aplicación web. Los roles se verifican e
 
 ## Pasos manuales de JP
 
-Lucas define su contraseña mediante la invitación o recuperación de Supabase; no compartirla en chat ni documentación. La sesión del navegador de Codex no está disponible desde la sesión en la nube de JP. La prueba debe realizarla Lucas o un operador autorizado con él presente, usando un canal seguro. Si el operador actúa con la sesión de Lucas, documentar expresamente quién ejecutó las acciones: LOGS atribuirá el correo de la sesión.
+Lucas define su contraseña mediante la invitación o recuperación de Supabase; no compartirla en chat ni documentación. La prueba debe realizarla Lucas o un operador autorizado con él presente, usando un canal seguro. Si el operador actúa con la sesión de Lucas, documentar expresamente quién ejecutó las acciones: LOGS atribuirá el correo de la sesión.
 
 ## Evidencia de ejecución · 2026-10-01
 
-- PR #7 sigue abierto; documentación revisada en `codex/workflow-docs`, commit `c6427bf5bd6d8541e3de20f17a9cf735ee107676`.
+- Al verificar el 2026-10-01, PR #7 estaba abierto; documentación revisada en `codex/workflow-docs`, commit `c6427bf5bd6d8541e3de20f17a9cf735ee107676`.
 - Rama de tarea creada desde la integración actualizada, commit `9420bea68572cfa12f9223b137851a7366578622`.
 - Migración y seed leídos en GitHub desde `codex/layer-01-foundation`: blobs `c10e0ada5e01eaee9672d9c156e4cce6bc9aae53` y `708b3e7e6e188019c65640e89c47bc52c7e4b103`.
 - `profiles` tiene `id`, `full_name` y fechas; no existe trigger de alta de perfil. `memberships` tiene unicidad `(tenant_id, user_id)` y acepta `tenant_admin`. El seed identifica la empresa por slug `creer`.
@@ -104,4 +104,8 @@ La comprobación previa exige exactamente un usuario y un tenant activo. La tran
 
 ## Revisión del borrador
 
-JP aportó una revisión independiente en el chat, sin publicarla en GitHub. Se retiró el correo personal del SQL público y se reescribieron los commits propios de esta rama. La sustitución no garantiza eliminar copias o referencias históricas conservadas por GitHub. El PR continúa en borrador; tras integrar #7 por decisión de JP, actualizar esta rama desde integración, resolver los dos archivos y revisar nuevamente el diff.
+Claude realizó la revisión independiente del commit `c0f5768`; JP la trasladó al chat. La revisión está publicada como [comentario del PR #8](https://github.com/gmusicproyect/proyectocreer/pull/8#issuecomment-5938838775), sin aprobación formal. JP decide la integración.
+
+Se retiró el correo personal del SQL público y se reescribieron los commits propios de esta rama. La sustitución no garantiza eliminar copias o referencias históricas conservadas por GitHub. Se corrigieron la atribución de la revisión y la frase sobre el navegador. Estos ajustes posteriores al commit revisado requieren nueva revisión.
+
+Antes de integrar #8, comprobar el estado de #7. Si JP lo integra, actualizar esta rama desde `codex/layer-01-foundation`, conservar el estado y la evidencia actualizados de #8 en los dos documentos en conflicto, actualizar las referencias al estado de #7 en `docs/estado.md` y en la descripción del PR, y revisar nuevamente el diff. El PR continúa en borrador y las pruebas de producción siguen pendientes.
