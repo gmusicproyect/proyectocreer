@@ -2,7 +2,7 @@
 
 > Leer este archivo antes de trabajar y actualizarlo en el mismo PR que cambie el estado de una tarea.
 
-**Última actualización:** 2026-10-01 · Codex, con el traspaso de Claude y verificación del entorno activo.
+**Última actualización:** 2026-10-01 · Codex añadió la tarea 005 (ayuda del panel); Claude la revisó y ajustó sus textos.
 
 ## Rama de integración
 
